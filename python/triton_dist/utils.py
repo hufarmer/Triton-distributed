@@ -21,6 +21,7 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #
+# 2025 - Modified by MetaX Integrated Circuits (Shanghai) Co., Ltd. All Rights Reserved.
 ################################################################################
 
 import datetime
@@ -49,7 +50,7 @@ import torch
 
 
 def is_cuda():
-    if torch.cuda.is_available() and (torch.version.hip is None) and (torch.version.maca is None):
+    if torch.cuda.is_available() and (torch.version.hip is None) and (getattr(torch.version,"maca", None) is None):
         return True
 
 
@@ -58,7 +59,7 @@ def is_hip():
         return True
 
 def is_maca():
-    if torch.cuda.is_available() and (torch.version.maca is not None):
+    if torch.cuda.is_available() and (getattr(torch.version,"maca", None) is not None):
         return True
 
 

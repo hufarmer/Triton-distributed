@@ -1,3 +1,4 @@
+// Copyright (c) 2025 MetaX Integrated Circuits (Shanghai) Co., Ltd. All rights reserved.
 #include <cstdint>
 #include "maca.h"
 #include "mc_runtime.h"

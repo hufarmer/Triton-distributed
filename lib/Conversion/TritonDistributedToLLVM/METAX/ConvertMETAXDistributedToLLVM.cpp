@@ -1,3 +1,4 @@
+// Copyright (c) 2025 MetaX Integrated Circuits (Shanghai) Co., Ltd. All rights reserved.
 #ifdef USE_MACA
 #include "TritonDistributed/Conversion/TritonDistributedToLLVM/Passes.h"
 #include "TritonDistributed/Dialect/Distributed/IR/Dialect.h"

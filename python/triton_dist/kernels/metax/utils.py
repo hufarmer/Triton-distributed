@@ -1,3 +1,4 @@
+# Copyright (c) 2025 MetaX Integrated Circuits (Shanghai) Co., Ltd. All rights reserved.
 from threading import Lock
 import functools
 import subprocess

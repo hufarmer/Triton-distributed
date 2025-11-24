@@ -1,5 +1,6 @@
 //
 // Modification Copyright 2025 ByteDance Ltd. and/or its affiliates.
+// 2025 - Modified by MetaX Integrated Circuits (Shanghai) Co., Ltd. All Rights Reserved.
 //
 #ifndef TRITONDISTRIBUTED_LLVM_CONVERSION_PASSES
 #define TRITONDISTRIBUTED_LLVM_CONVERSION_PASSES

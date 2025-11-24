@@ -1,4 +1,6 @@
 #!/bin/bash
+# Copyright (c) 2025 MetaX Integrated Circuits (Shanghai) Co., Ltd. All rights reserved.
+
 nproc_per_node=1
 nnodes=${WORKER_NUM:=1}
 node_rank=${WORKER_ID:=0}

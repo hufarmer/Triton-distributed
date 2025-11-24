@@ -1,3 +1,4 @@
+// Copyright (c) 2025 MetaX Integrated Circuits (Shanghai) Co., Ltd. All rights reserved.
 #include <cstdint>
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>

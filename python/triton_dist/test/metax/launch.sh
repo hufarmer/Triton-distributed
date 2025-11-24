@@ -1,4 +1,6 @@
 #!/bin/bash
+# Copyright (c) 2025 MetaX Integrated Circuits (Shanghai) Co., Ltd. All rights reserved.
+
 export CUDA_DEVICE_MAX_CONNECTIONS=${CUDA_DEVICE_MAX_CONNECTIONS:-1}
 export CUDA_LAUNCH_BLOCKING=0
 export TORCH_CPP_LOG_LEVEL=1
