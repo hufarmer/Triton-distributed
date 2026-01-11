@@ -35,18 +35,18 @@
 namespace py = pybind11;
 
 void init_triton_distributed_passes_ttgpuir_for_nvidia(py::module &&m) {
-  // using namespace mlir::triton;
-  // ADD_PASS_WRAPPER_2("add_convert_triton_distributed_to_llvm",
-  //                    createConvertTritonDistributedToLLVMPass, int, int);
+  using namespace mlir::triton;
+  ADD_PASS_WRAPPER_2("add_convert_triton_distributed_to_llvm",
+                     createConvertTritonDistributedToLLVMPass, int, int);
 }
 
 void init_triton_distributed_passes_ttgpuir_for_amd(py::module &&m) {
-  // using namespace mlir::triton;
-  // ADD_PASS_WRAPPER_1("add_builtin_func_to_llvmir_ext",
-  //                    createConvertBuiltinFuncToLLVMExtPass, bool);
-  // ADD_PASS_WRAPPER_2("add_distributed_to_llvm",
-  //                    createConvertAMDDistributedToLLVMPass, const std::string &,
-  //                    bool);
+  using namespace mlir::triton;
+  ADD_PASS_WRAPPER_1("add_builtin_func_to_llvmir_ext",
+                     createConvertBuiltinFuncToLLVMExtPass, bool);
+  ADD_PASS_WRAPPER_2("add_distributed_to_llvm",
+                     createConvertAMDDistributedToLLVMPass, const std::string &,
+                     bool);
 }
 
 void init_triton_distributed_passes_ttgpuir_for_metax(py::module &&m) {
@@ -65,8 +65,11 @@ void init_triton_distributed_passes_ttir(py::module &&m) {
 void init_triton_distributed_passes(py::module &&m) {
   init_triton_distributed_passes_ttir(m.def_submodule("ttir"));
   auto ttgpuir = m.def_submodule("ttgpuir");
+#ifdef USE_MACA
   init_triton_distributed_passes_ttgpuir_for_metax(ttgpuir.def_submodule("metax"));
-  //init_triton_distributed_passes_ttgpuir_for_nvidia(
-  //    ttgpuir.def_submodule("nvidia"));
-  //init_triton_distributed_passes_ttgpuir_for_amd(ttgpuir.def_submodule("amd"));
+#else
+  init_triton_distributed_passes_ttgpuir_for_nvidia(
+     ttgpuir.def_submodule("nvidia"));
+  init_triton_distributed_passes_ttgpuir_for_amd(ttgpuir.def_submodule("amd"));
+#endif
 }

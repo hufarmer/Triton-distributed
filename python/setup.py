@@ -32,6 +32,7 @@ from setuptools.command.sdist import sdist
 import pybind11
 
 from build_helpers import create_symlink_rel, get_base_dir, get_cmake_dir, copy_file
+
 from setuptools.command.build_ext import build_ext
 
 try:
@@ -367,6 +368,8 @@ def get_thirdparty_packages(packages: list):
 
 
 def download_and_copy(name, src_func, dst_path, variable, version, url_func):
+    if _is_hip_platform():
+        return
     if is_offline_build():
         return
     triton_cache_path = get_triton_cache_path()
@@ -673,6 +676,7 @@ class CMakeBuild(build_ext):
 
 nvidia_version_path = os.path.join(get_base_dir(), "3rdparty", "triton", "cmake", "nvidia-toolchain-version.json")
 with open(nvidia_version_path, "r") as nvidia_version_file:
+    # parse this json file to get the version of the nvidia toolchain
     NVIDIA_TOOLCHAIN_VERSION = json.load(nvidia_version_file)
 
 exe_extension = sysconfig.get_config_var("EXE")
@@ -751,6 +755,7 @@ download_and_copy(
     f"https://developer.download.nvidia.com/compute/cuda/redist/cuda_cupti/{system}-{arch}/cuda_cupti-{system}-{arch}-{version}-archive.tar.xz",
 )
 backends = [*BackendInstaller.copy(["nvidia", "amd"]), *BackendInstaller.copy_externals()]
+
 
 def add_link_to_backends(external_only, materialization=False):
 
