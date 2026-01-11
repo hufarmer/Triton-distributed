@@ -28,9 +28,9 @@ else()
         MLIRPass
         MLIRTransforms
         TritonIR
-        #ProtonIR
+        ProtonIR
         DistributedIR
-        #SIMTIR
+        SIMTIR
         TritonGPUIR
         TritonGPUTransforms
 )

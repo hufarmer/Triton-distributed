@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.12)
 
-project(pvmxshmem LANGUAGES CXX CUDA)
+project(pymxshmem LANGUAGES CXX CUDA)
 
 message(FATAL_ERROR "camake start")
 find_package(
@@ -48,23 +48,23 @@ endif()
 find_package(MXSHMEM REQUIRED)
 
 set(SOURCES
-    src/pvmxshmem.cc
+    src/pymxshmem.cc
     src/flush_l2c.cu
 )
 
-pybind11_add_module(pvmxshmem ${SOURCES})
+pybind11_add_module(pymxshmem ${SOURCES})
 
 include_directories(${CUDA_INCLUDE_DIRS})
 message(STATUS "CUDA include directories: ${CUDA_INCLUDE_DIRS}")
 
-set_target_properties(pvmxshmem PROPERTIES CXX_STANDARD 17
+set_target_properties(pymxshmem PROPERTIES CXX_STANDARD 17
                                            CUDA_RESOLVE_DEVICE_SYMBOLS ON)
 
-target_link_libraries(pvmxshmem PRIVATE mxshmem::mxshmem_host
+target_link_libraries(pymxshmem PRIVATE mxshmem::mxshmem_host
                                         mxshmem::mxshmem_device
                                         torch
                                         ${TORCH_PYTHON_LIBRARY})
 
-target_include_directories(pvmxshmem PRIVATE ${MXSHMEM_INCLUDE_DIRS} ${TORCH_INCLUDE_DIRS})
-target_compile_options(pvmxshmem PRIVATE $<$<COMPILE_LANGUAGE:CUDA>:-rdc=true>)
-target_compile_options(pvmxshmem PRIVATE "-DUSE_MACA")
+target_include_directories(pymxshmem PRIVATE ${MXSHMEM_INCLUDE_DIRS} ${TORCH_INCLUDE_DIRS})
+target_compile_options(pymxshmem PRIVATE $<$<COMPILE_LANGUAGE:CUDA>:-rdc=true>)
+target_compile_options(pymxshmem PRIVATE "-DUSE_MACA")

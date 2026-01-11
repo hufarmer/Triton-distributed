@@ -30,15 +30,11 @@ torch.distributed.init_process_group(
     timeout=datetime.timedelta(seconds=1800),
 )
 assert torch.distributed.is_initialized()
-# use all ranks as tp group
 TP_GROUP = torch.distributed.new_group(ranks=list(range(WORLD_SIZE)), backend="nccl")
 
 torch.cuda.synchronize()
 pymxshmem.init_mxshmem_by_uniqueid(TP_GROUP)
 ring_put()
 
-# nvshmem.core.finalize()
-# (TODO MACA) Here we use pymxshmem.mxshmem_finalize() as a replacement for nvshmem.core.finalize()
-# temporarily which requires python version for nvshmem and is not supported now.
 pymxshmem.mxshmem_finalize()
 torch.distributed.destroy_process_group()

@@ -1,9 +1,7 @@
 #include <cuda.h>
 
 __global__ void flush_l2c_dev() {
-    asm ("wb_l2");
-    asm ("arrive 0x40");
-    asm ("inv_l2");
+    // TODO
 }
 
 extern "C" void flush_l2c(cudaStream_t stream) {

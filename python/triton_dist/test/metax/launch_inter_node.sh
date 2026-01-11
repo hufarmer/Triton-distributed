@@ -8,27 +8,19 @@ export MXSHMEM_SYMMETRIC_SIZE=${MXSHMEM_SYMMETRIC_SIZE:-1000000000}
 
 SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)
 
-#export MXSHMEM_DISABLE_CUDA_VMM=${MXSHMEM_DISABLE_CUDA_VMM:-1} # moving from cpp to shell
-#export MXSHMEM_BOOTSTRAP=UID
 # internode
 export MXSHMEM_BOOTSTRAP=MPI
 export MXSHMEM_DISABLE_CUDA_VMM=1
-#export MXSHMEM_DISABLE_P2P=1
 export MXSHMEM_IB_ENABLE_IBGDA=1
 export MXSHMEM_IB_ENABLE_IBRC=0
 # SET SOCKET NAME
 export MXSHMEM_BOOTSTRAP_UID_SOCK_IFNAME=ens108np0   #en,eth0,em,bond
-# export MXSHMEM_HCA_LIST=mlx5_0:1
-# export MCCL_SOCKET_IFNAME=ens108np0
-# export MCCL_IB_HCA=mlx5_0
 export TRITON_CACHE_DIR=${TRITON_CACHE_DIR:~/.triton}
-
 
 nproc_per_node=$(mx-smi --list | grep "GPU" | wc -l)
 nnodes=${WORKER_NUM:=1}
 node_rank=${WORKER_ID:=0}
 
-# master_addr="127.0.0.1"
 master_addr="10.2.179.27"
 master_port="23468"
 

@@ -1,9 +1,7 @@
 #!/bin/bash
 set -x
-# clean all cache 
 CUR_DIR="$(cd $(dirname $0);pwd)/"
-export MXSHMEM_DIR=${CUR_DIR}/../../3rdparty/mxshmem/
-# rm -rf ${MXSHMEM_DIR}/build/ && rm -rf ${CUR_DIR}/pymxshmem/build/
+# export MXSHMEM_DIR=
 rm -rf ${CUR_DIR}/pymxshmem/build/
 
 #set LLVM and MACA path
@@ -20,7 +18,6 @@ export PATH=${CUCC_PATH}/tools:$PATH
 #set llvm's env
 export LD_LIBRARY_PATH=${LLVM_SYSPATH}/lib:$LD_LIBRARY_PATH
 export PATH=${LLVM_SYSPATH}/bin:$PATH
-export PYTHONPATH=
 
 if [ -n "$MACA_PATH" ]; then
     USE_MACA=ON
@@ -37,15 +34,13 @@ while [[ $# -gt 0 ]]; do
 
   case $key in
   --arch)
-    # Process the arch argument
     ARCH="$2"
-    shift # Skip the argument value
-    shift # Skip the argument key
+    shift
+    shift
     ;;
   *)
-    # Unknown argument
     echo "Unknown argument: $1"
-    shift # Skip the argument
+    shift
     ;;
   esac
 done
@@ -67,12 +62,12 @@ function set_arch() {
   fi
 }
 
-function set_nvcc_gencode() {
-  NVCC_GENCODE="" # default none
+function set_gencode() {
+  GENCODE="" # default none
   arch_list=()
   IFS=";" read -ra arch_list <<<"$ARCH"
   for _arch in "${arch_list[@]}"; do
-    NVCC_GENCODE="-gencode=arch=compute_${_arch},code=sm_${_arch} ${NVCC_GENCODE}"
+    GENCODE="-gencode=arch=compute_${_arch},code=sm_${_arch} ${GENCODE}"
   done
 }
 
@@ -91,7 +86,7 @@ function move_libmxshmem_device_bc() {
 }
 
 # set_arch
-set_nvcc_gencode
+set_gencode
 
 export MXSHMEM_BUILD_DIR=${MXSHMEM_DIR}/build/src
 bash -x ${PROJECT_ROOT}/build_mxshmem.sh ${build_args}

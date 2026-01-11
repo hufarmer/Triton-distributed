@@ -1,5 +1,4 @@
 #!/bin/bash
-# find libmxshmem_host.so in pymxshmem install directory now
 MXSHMEM_LIB_PATH="$(pip show pymxshmem | grep "Location" | awk '{print $2}')/pymxshmem/"
 export LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:${MXSHMEM_LIB_PATH}"
 export MXSHMEM_DISABLE_CUDA_VMM=1

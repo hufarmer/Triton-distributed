@@ -15,46 +15,12 @@ USE_MACA = True if os.getenv('MACA_PATH') else False
 # Project directory root
 root_path: Path = Path(__file__).resolve().parent
 MXSHMEM_HOME = os.environ.get("MXSHMEM_HOME")
-print("MXSHMEM_HOME is:", MXSHMEM_HOME)
 PACKAGE_NAME = "pymxshmem"
 
 site_packages_dir = sysconfig.get_path("purelib")
 virtual_env = sysconfig.get_config_var('base')
 install_so_path = os.path.relpath(site_packages_dir, virtual_env)
 install_so_path = os.path.join(install_so_path, PACKAGE_NAME)
-def cuda_version() -> Tuple[int, ...]:
-    import pdb;pdb.set_trace()
-    """CUDA Toolkit version as a (major, minor) by nvcc --version"""
-
-    # Try finding NVCC
-    nvcc_bin: Optional[Path] = None
-    if nvcc_bin is None and os.getenv("CUDA_HOME"):
-        # Check in CUDA_HOME
-        cuda_home = Path(os.getenv("CUDA_HOME"))
-        nvcc_bin = cuda_home / "bin" / "cucc"
-    if nvcc_bin is None:
-        # Check if nvcc is in path
-        nvcc_bin = shutil.which("nvcc")
-        if nvcc_bin is not None:
-            nvcc_bin = Path(nvcc_bin)
-    if nvcc_bin is None:
-        # Last-ditch guess in /usr/local/cuda
-        cuda_home = Path("/usr/local/cuda")
-        nvcc_bin = cuda_home / "bin" / "cucc"
-    if not nvcc_bin.is_file():
-        raise FileNotFoundError(f"Could not find NVCC at {nvcc_bin}")
-
-    # Query NVCC for version info
-    output = subprocess.run(
-        [nvcc_bin, "-V"],
-        capture_output=True,
-        check=True,
-        universal_newlines=True,
-    )
-    match = re.search(r"release\s*([\d.]+)", output.stdout)
-    version = match.group(1).split(".")
-    return tuple(int(v) for v in version)
-
 
 def get_package_version():
     return "0.0.1"
@@ -82,34 +48,25 @@ def mxshmem_deps():
 
 
 @pathlib_wrapper
-def cuda_deps():
-    if USE_MACA:
-        maca_path = os.getenv("MACA_PATH")
-        include_dirs = [os.path.join(maca_path, "include")]
-        library_dirs = [os.path.join(maca_path, "lib"), os.path.join(maca_path, "lib/stubs")]
-        libraries = ["mcruntime"]
-        return include_dirs, library_dirs, libraries
-    else:
-        cuda_home = Path(os.environ.get("CUDA_HOME", "/usr/local/cuda"))
-        include_dirs = [cuda_home / "include"]
-        library_dirs = [cuda_home / "lib64", cuda_home / "lib64/stubs"]
-
-        return include_dirs, library_dirs, libraries
+def deps():
+    maca_path = os.getenv("MACA_PATH")
+    include_dirs = [os.path.join(maca_path, "include")]
+    library_dirs = [os.path.join(maca_path, "lib"), os.path.join(maca_path, "lib/stubs")]
+    libraries = ["mcruntime"]
+    return include_dirs, library_dirs, libraries
 
 
 def setup_pytorch_extension() -> setuptools.Extension:
     """Setup CppExtension for PyTorch support"""
     include_dirs, library_dirs, libraries = [], [], []
 
-    deps = [mxshmem_deps(), cuda_deps()]
+    deps = [mxshmem_deps(), deps()]
 
     for include_dir, library_dir, library in deps:
         include_dirs += include_dir
         library_dirs += library_dir
         libraries += library
 
-    # Compiler flags
-    # too much warning from CUDA /usr/local/cuda/include/cusparse.h: "-Wdeprecated-declarations"
     cxx_flags = [
         "-O3",
         "-DTORCH_CUDA=1",
@@ -129,7 +86,7 @@ def setup_pytorch_extension() -> setuptools.Extension:
         libraries=libraries,
         dlink=True,
         dlink_libraries=["mxshmem_device", "cudart_static"],
-        extra_compile_args={"cxx": cxx_flags, "nvcc": ["-rdc=true"]},
+        extra_compile_args={"cxx": cxx_flags},
         extra_link_args=ld_flags,
     )
 
