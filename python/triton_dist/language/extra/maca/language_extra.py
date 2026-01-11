@@ -22,21 +22,41 @@
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #
 ################################################################################
-from triton_dist.utils import is_cuda, is_hip, is_maca
 
-if is_cuda():
-    from .nvidia.common_ops import _wait_eq_cuda as wait_eq
-    from .nvidia.common_ops import _set_signal_cuda as set_signal
-elif is_hip():
-    from .amd.common_ops import _wait_eq_hip as wait_eq
-    from .amd.common_ops import _set_signal_hip as set_signal
-elif is_maca():
-    from .metax.common_ops import _wait_eq_maca as wait_eq
-    from .metax.common_ops import _set_signal_maca as set_signal
-else:
-    raise Exception("only support cuda and hip")
+import triton
+import triton.language as tl
+from triton.language import core
+# from triton.language.extra.maca.libdevice import ffs
+
+@core.extern
+def __syncthreads(_builder=None):
+    return tl.debug_barrier(_builder=_builder)
+
+
+@core.extern
+def __tid__(axis: core.constexpr, _builder=None):
+    return tl.inline_intrinsic_elementwise(
+        intrinsic=f"llvm.mxc.thread.id.{axis.value}",
+        args=[],
+        dtype=tl.int32,
+        is_pure=True,
+        _builder=_builder,
+    )
+
+
+@core.extern
+def tid(axis: core.constexpr, _builder=None):
+    if axis == 0:
+        return __tid__(core.constexpr("x"), _builder=_builder)
+    elif axis == 1:
+        return __tid__(core.constexpr("y"), _builder=_builder)
+    elif axis == 2:
+        return __tid__(core.constexpr("z"), _builder=_builder)
+    else:
+        tl.static_assert(False, "axis must be 0, 1 or 2")
+
 
 __all__ = [
-    "wait_eq",
-    "set_signal",
+    "__syncthreads",
+    "tid",
 ]

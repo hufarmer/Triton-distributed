@@ -22,9 +22,9 @@ def ConvertTritonDistributedToLLVM : Pass<"convert-triton-distributed-to-llvm", 
                              "mlir::triton::TritonDialect",
                              "mlir::triton::gpu::TritonGPUDialect",
                              "mlir::triton::nvidia_gpu::TritonNvidiaGPUDialect",
-                             "triton::simt::SIMTDialect",
+                             //"triton::simt::SIMTDialect",
                              "triton::distributed::DistributedDialect",
-                             "mlir::triton::nvgpu::NVGPUDialect",
+                             //"mlir::triton::nvgpu::NVGPUDialect",
                              "mlir::NVVM::NVVMDialect"];
 
     let options = [
@@ -78,5 +78,32 @@ def ConvertAMDDistributedToLLVM : Pass<"convert-amd-distributed-to-llvm", "mlir:
                "flush denorms for math functions">,
     ];
 }
+
+// METAX Backend
+#ifdef USE_MACA
+def ConvertMETAXDistributedToLLVM : Pass<"convert-metax-distributed-to-llvm", "mlir::ModuleOp"> {
+    let summary = "Convert TritonDistributed to LLVM";
+    let description = [{
+        The `convert-metax-distributed-to-llvm` pass performs lowering of
+        the distributed op for METAX backend.
+    }];
+    let constructor = "mlir::triton::createConvertMETAXDistributedToLLVMPass(/*computeCapability=*/80)";
+
+    let dependentDialects = ["mlir::arith::ArithDialect",
+                             "mlir::math::MathDialect",
+                             "mlir::gpu::GPUDialect",
+                             "mlir::scf::SCFDialect",
+                             "mlir::LLVM::LLVMDialect",
+                             "mlir::triton::TritonDialect",
+                             "mlir::triton::gpu::TritonGPUDialect",
+                             "triton::distributed::DistributedDialect"];
+
+    let options = [
+        Option<"computeCapability", "compute-capability",
+               "int32_t", /*default*/"80",
+               "device compute capability">
+    ];
+}
+#endif
 
 #endif // TRITONDISTRIBUTED_LLVM_CONVERSION_PASSES

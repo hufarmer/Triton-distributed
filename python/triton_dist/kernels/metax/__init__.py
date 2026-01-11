@@ -22,21 +22,19 @@
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #
 ################################################################################
-from triton_dist.utils import is_cuda, is_hip, is_maca
-
-if is_cuda():
-    from .nvidia.common_ops import _wait_eq_cuda as wait_eq
-    from .nvidia.common_ops import _set_signal_cuda as set_signal
-elif is_hip():
-    from .amd.common_ops import _wait_eq_hip as wait_eq
-    from .amd.common_ops import _set_signal_hip as set_signal
-elif is_maca():
-    from .metax.common_ops import _wait_eq_maca as wait_eq
-    from .metax.common_ops import _set_signal_maca as set_signal
-else:
-    raise Exception("only support cuda and hip")
-
+from .allgather_gemm import ag_gemm_intra_node, create_ag_gemm_intra_node_context, ag_gemm_inter_node, \
+create_ag_gemm_inter_node_context, gemm, inter_node_allgather, local_copy_and_barrier_all
+from .utils import *
 __all__ = [
-    "wait_eq",
-    "set_signal",
+    "ag_gemm_intra_node",
+    "create_ag_gemm_intra_node_context",
+    "ag_gemm_inter_node",
+    "create_ag_gemm_inter_node_context",
+    "gemm"
+    "get_numa_node"
+    "has_fullmesh_mxlink"
+    "has_fullmesh_mxlink_ngpus"
+    "get_numa_world_size"
+    "inter_node_allgather"
+    "local_copy_and_barrier_all"
 ]

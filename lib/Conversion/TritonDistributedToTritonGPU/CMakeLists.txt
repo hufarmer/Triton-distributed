@@ -10,9 +10,9 @@ add_triton_library(TritonDistributedToTritonGPU
     MLIRPass
     MLIRTransforms
     TritonIR
-    ProtonIR
+    #ProtonIR
     DistributedIR
-    SIMTIR
+    #SIMTIR
     TritonGPUIR
     TritonGPUTransforms
 )

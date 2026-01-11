@@ -15,7 +15,8 @@ set(CMAKE_INCLUDE_CURRENT_DIR ON)
 project(triton CXX C)
 include(CTest)
 
-list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/3rdparty/triton/cmake")
+set(TRITON_SRC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../../)
+list(APPEND CMAKE_MODULE_PATH "${TRITON_SRC_DIR}/cmake")
 
 # Options
 option(TRITON_BUILD_PYTHON_MODULE "Build Python Triton bindings" OFF)
@@ -25,6 +26,7 @@ option(USE_TRITON_DISTRIBUTED_AOT "Build the Triton Distributed with AOT" OFF)
 option(TRITON_BUILD_UT "Build C++ Triton Unit Tests" ON)
 option(TRITON_BUILD_WITH_CCACHE "Build with ccache (if available)" ON)
 set(TRITON_CODEGEN_BACKENDS "" CACHE STRING "Enable different codegen backends")
+option(TRITON_USE_MACA "Use MACA" ON)
 
 if(TRITON_BUILD_WITH_CCACHE)
   find_program(CCACHE_PROGRAM ccache)
@@ -84,13 +86,22 @@ if(TRITON_BUILD_UT)
 endif()
 
 # Compiler flags
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/3rdparty/triton/include)
+include_directories(${TRITON_SRC_DIR}/include)
 if(NOT MSVC)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D__STDC_FORMAT_MACROS  -fPIC -std=gnu++17")
 else()
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D__STDC_FORMAT_MACROS")
 endif()
 
+if (TRITON_USE_MACA)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DUSE_MACA -DUSE_BUILTIN -Wno-unused-result -Wno-attributes")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DUSE_MACA_OPAQUE_PTR ")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DUSE_LLVM19_INTRINSIC ")
+endif()
+
+if (TRITON_BUILD_DISTRIBUTED)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DUSE_MACA_DISTRIBUTED ")
+endif()
 
 # #########
 # LLVM
@@ -151,20 +162,21 @@ endif()
 
 include_directories(${PROJECT_SOURCE_DIR}/include)
 include_directories(${PROJECT_BINARY_DIR}/include)
-include_directories(${PROJECT_SOURCE_DIR}/3rdparty/triton)
+include_directories(${TRITON_SRC_DIR})
 include_directories(${MLIR_INCLUDE_DIRS})
 include_directories(${LLVM_INCLUDE_DIRS})
-include_directories(${PROJECT_SOURCE_DIR}/3rdparty/triton/include)
-include_directories(${PROJECT_BINARY_DIR}/3rdparty/triton/include) # Tablegen'd files
-include_directories(${PROJECT_SOURCE_DIR}/3rdparty/triton/third_party)
-include_directories(${PROJECT_BINARY_DIR}/3rdparty/triton/third_party) # Tablegen'd files
+include_directories(${TRITON_SRC_DIR}/include)
+include_directories(${PROJECT_BINARY_DIR}/triton/include) # Tablegen'd files
+include_directories(${TRITON_SRC_DIR}/third_party)
+include_directories(${PROJECT_BINARY_DIR}/triton/third_party) # Tablegen'd files
 # backend
-include_directories(${PROJECT_SOURCE_DIR}/3rdparty/triton/third_party/amd/include)
-include_directories(${PROJECT_SOURCE_DIR}/3rdparty/triton/third_party/nvidia/include)
+include_directories(${TRITON_SRC_DIR}/third_party/amd/include)
+include_directories(${TRITON_SRC_DIR}/third_party/nvidia/include)
+include_directories(${TRITON_SRC_DIR}/third_party/metax/include)
 
 # link_directories(${LLVM_LIBRARY_DIR})
-add_subdirectory(3rdparty/triton/include)
-add_subdirectory(3rdparty/triton/lib)
+add_subdirectory(${TRITON_SRC_DIR}/include ${PROJECT_BINARY_DIR}/triton/include)
+add_subdirectory(${TRITON_SRC_DIR}/lib ${PROJECT_BINARY_DIR}/triton/third_party)
 add_subdirectory(include)
 add_subdirectory(lib)
 
@@ -186,17 +198,34 @@ if(TRITON_BUILD_PYTHON_MODULE)
   add_triton_plugin(TritonDistributed ${PYTHON_DIST_SRC_PATH}/triton_distributed.cc
                                       ${PYTHON_DIST_SRC_PATH}/passes.cc
                                       ${PYTHON_DIST_SRC_PATH}/ir.cc)
-  target_link_libraries(TritonDistributed PRIVATE DistributedIR SIMTIR ProtonIR Python3::Module pybind11::headers)
+  target_link_libraries(TritonDistributed PRIVATE DistributedIR Python3::Module pybind11::headers)
 endif()
 
 if(TRITON_BUILD_PYTHON_MODULE)
   message(STATUS "Adding Python module")
-  set(PYTHON_SRC_PATH ${CMAKE_CURRENT_SOURCE_DIR}/3rdparty/triton/python/src)
+  set(PYTHON_SRC_PATH ${TRITON_SRC_DIR}/python/src)
   include_directories(${PYTHON_SRC_PATH})
 
   # Python Interpreter is used to run lit tests
   find_package(Python3 REQUIRED COMPONENTS Development.Module Interpreter)
   find_package(pybind11 CONFIG REQUIRED HINTS "${Python3_SITELIB}")
+
+  if(PYTHON_INCLUDE_DIRS)
+    # We have PYTHON_INCLUDE_DIRS set--this is what we expect when building
+    # using pip install.
+    include_directories(${PYTHON_INCLUDE_DIRS})
+    include_directories(${pybind11_INCLUDE_DIR})
+  else()
+    # Otherwise, we might be building from top CMakeLists.txt directly.
+    # Try to find Python and pybind11 packages.
+    find_package(Python3 REQUIRED COMPONENTS Development Interpreter)
+    find_package(pybind11 CONFIG REQUIRED HINTS "${Python3_SITELIB}")
+    include_directories(${Python3_INCLUDE_DIRS})
+    include_directories(${pybind11_INCLUDE_DIR})
+    link_directories(${Python3_LIBRARY_DIRS})
+    link_libraries(${Python3_LIBRARIES})
+    add_link_options(${Python3_LINK_OPTIONS})
+  endif()
 
   if (DEFINED TRITON_PLUGIN_DIRS)
     foreach(PLUGIN_DIR ${TRITON_PLUGIN_DIRS})
@@ -216,18 +245,18 @@ if(TRITON_BUILD_PYTHON_MODULE)
   endif()
 
   foreach(CODEGEN_BACKEND ${TRITON_CODEGEN_BACKENDS})
-    add_subdirectory(3rdparty/triton/third_party/${CODEGEN_BACKEND})
+    add_subdirectory(${TRITON_SRC_DIR}/third_party/${CODEGEN_BACKEND} ${PROJECT_BINARY_DIR}/triton/third_party/${CODEGEN_BACKEND})
   endforeach()
 
   if (TRITON_BUILD_PROTON)
-    add_subdirectory(3rdparty/triton/third_party/proton)
+    add_subdirectory(${TRITON_SRC_DIR}/third_party/proton ${PROJECT_BINARY_DIR}/triton/third_party/proton)
   endif()
   if (TRITON_BUILD_DISTRIBUTED)
     add_subdirectory(csrc)
   endif()
   # We always build proton dialect
-  list(APPEND TRITON_PLUGIN_NAMES "proton")
-  add_subdirectory(3rdparty/triton/third_party/proton/dialect)
+  # list(APPEND TRITON_PLUGIN_NAMES "proton")
+  # add_subdirectory(${TRITON_SRC_DIR}/third_party/proton/dialect ${PROJECT_BINARY_DIR}/triton/third_party/proton/dialect)
   # We always build distributed dialect
   list(APPEND TRITON_PLUGIN_NAMES "distributed")
 
@@ -240,6 +269,8 @@ if(TRITON_BUILD_PYTHON_MODULE)
     # mlir
     MLIRAMDGPUDialect
     MLIRNVVMDialect
+    MLIRMACADialect
+    MLIRGPUToMACATransforms
     MLIRNVVMToLLVMIRTranslation
     MLIRGPUToNVVMTransforms
     MLIRGPUToGPURuntimeTransforms
@@ -305,7 +336,7 @@ if(TRITON_BUILD_PYTHON_MODULE)
   add_compile_definitions(TRITON_BACKENDS_TUPLE=${TRITON_BACKENDS_TUPLE})
   add_library(triton SHARED ${PYTHON_SRC_PATH}/main.cc
                   ${PYTHON_SRC_PATH}/ir.cc
-                  ${PYTHON_SRC_PATH}/gluon_ir.cc
+#                  ${PYTHON_SRC_PATH}/gluon_ir.cc
                   ${PYTHON_SRC_PATH}/passes.cc
                   ${PYTHON_SRC_PATH}/interpreter.cc
                   ${PYTHON_SRC_PATH}/llvm.cc)
@@ -329,10 +360,10 @@ if(TRITON_BUILD_PYTHON_MODULE)
       message(FATAL_ERROR "TRITON_WHEEL_DIR must be set.")
   endif()
 
-  configure_file(
-    "${LLVM_SYSPATH}/bin/FileCheck"
-    "${TRITON_WHEEL_DIR}/FileCheck"
-    COPYONLY)
+#  configure_file(
+#    "${LLVM_SYSPATH}/bin/FileCheck"
+#    "${TRITON_WHEEL_DIR}/FileCheck"
+#    COPYONLY)
 
 endif()
 
@@ -353,19 +384,19 @@ endif()
 
 if(NOT TRITON_BUILD_PYTHON_MODULE)
   foreach(CODEGEN_BACKEND ${TRITON_CODEGEN_BACKENDS})
-    add_subdirectory(3rdparty/triton/third_party/${CODEGEN_BACKEND})
+    add_subdirectory(${TRITON_SRC_DIR}/third_party/${CODEGEN_BACKEND} ${PROJECT_BINARY_DIR}/triton/third_party/${CODEGEN_BACKEND})
   endforeach()
-  add_subdirectory(3rdparty/triton/third_party/proton/dialect)
+  add_subdirectory(${TRITON_SRC_DIR}/third_party/proton/dialect ${PROJECT_BINARY_DIR}/triton/third_party/proton/dialect)
 endif()
 
 find_package(Threads REQUIRED)
 
-add_subdirectory(3rdparty/triton/third_party/f2reduce)
-add_subdirectory(3rdparty/triton/bin)
-add_subdirectory(3rdparty/triton/test)
+add_subdirectory(${TRITON_SRC_DIR}/third_party/f2reduce ${PROJECT_BINARY_DIR}/triton/third_party/f2reduce)
+add_subdirectory(${TRITON_SRC_DIR}/bin ${PROJECT_BINARY_DIR}/triton/bin)
+add_subdirectory(${TRITON_SRC_DIR}/test ${PROJECT_BINARY_DIR}/triton/test)
 
 if(TRITON_BUILD_UT)
-  add_subdirectory(3rdparty/triton/unittest)
+  add_subdirectory(${TRITON_SRC_DIR}/unittest ${PROJECT_BINARY_DIR}/triton/unittest)
   # This target runs all the unit tests.
   add_custom_target(check-triton-unit-tests
     COMMAND ${CMAKE_CTEST_COMMAND} --output-on-failure

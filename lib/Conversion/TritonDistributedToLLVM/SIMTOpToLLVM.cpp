@@ -32,7 +32,7 @@
 
 #include "TritonDistributed/Dialect/SIMT/IR/Dialect.h"
 
-#include "third_party/nvidia/lib/TritonNVIDIAGPUToLLVM/Utility.h"
+//#include "third_party/nvidia/lib/TritonNVIDIAGPUToLLVM/Utility.h"
 #include <string>
 
 using namespace mlir;
@@ -41,10 +41,11 @@ using namespace std::literals;
 
 namespace {
 
+// TODO: MACA DIST support ttg::MemDescType
 Value getSharedMemAddress(RewriterBase &rewriter,
                           const SharedMemoryObject &smemObj,
                           const SmallVector<Value> &indices,
-                          triton::gpu::MemDescType sharedTy, Type elemLlvmTy,
+                          triton::MemDescType sharedTy, Type elemLlvmTy,
                           Location loc) {
   auto sharedEnc =
       cast<triton::gpu::SharedEncodingTrait>(sharedTy.getEncoding());
