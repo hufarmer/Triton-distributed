@@ -32,8 +32,6 @@ from pathlib import Path
 def get_base_dir():
     return os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
 
-def get_triton_dir():
-    return os.path.abspath(os.path.join(os.path.join(os.path.dirname(__file__), os.pardir), "../../"))
 
 def get_cmake_dir():
     plat_name = sysconfig.get_platform()

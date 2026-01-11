@@ -30,24 +30,25 @@
 #include "mlir/Pass/Pass.h"
 #include "mlir/Transforms/DialectConversion.h"
 #include "mlir/Transforms/GreedyPatternRewriteDriver.h"
-#include "third_party/proton/dialect/include/Dialect/Proton/IR/Dialect.h"
+//#include "third_party/proton/dialect/include/Dialect/Proton/IR/Dialect.h"
 #include "triton/Conversion/TritonToTritonGPU/Passes.h"
 #include "triton/Dialect/Triton/IR/Dialect.h"
 #include "triton/Dialect/Triton/IR/Utility.h"
 #include "triton/Dialect/TritonGPU/IR/Dialect.h"
-#include "triton/Dialect/TritonGPU/Transforms/PipeliningUtility.h"
+// TODO: MACA DIST support triton version > 3.0
+//#include "triton/Dialect/TritonGPU/Transforms/PipeliningUtility.h"
 #include "triton/Dialect/TritonGPU/Transforms/TritonGPUConversion.h"
 #include "llvm/ADT/APSInt.h"
 #include <numeric>
 
 #include "TritonDistributed/Dialect/Distributed/IR/Dialect.h"
-#include "TritonDistributed/Dialect/SIMT/IR/Dialect.h"
+//#include "TritonDistributed/Dialect/SIMT/IR/Dialect.h"
 
 #define GEN_PASS_CLASSES
 #include "TritonDistributed/Conversion/TritonDistributedToTritonGPU/Passes.h.inc"
 #include "triton/Dialect/TritonGPU/Transforms/Utility.h"
 
-#include "third_party/proton/dialect/include/Dialect/Proton/IR/Dialect.h"
+//#include "third_party/proton/dialect/include/Dialect/Proton/IR/Dialect.h"
 
 #define DEBUG_TYPE "convert-triton-to-tritongpu"
 #define DBGS() (llvm::dbgs() << "[" DEBUG_TYPE "]: ")
@@ -526,9 +527,12 @@ public:
                                 newOp.getBody().end());
     // Convert just the entry block. The remaining unstructured control flow is
     // converted by br patterns.
-    if (!newOp.getBody().empty())
-      rewriter.applySignatureConversion(&newOp.getBody().front(), result,
-                                        converter);
+    // TODO: MACA DIST support applySignatureConversion
+    // if (!newOp.getBody().empty())
+    //   rewriter.applySignatureConversion(&newOp.getBody().front(), result,
+    //                                     converter);
+    if (failed(rewriter.convertRegionTypes(&newOp.getBody(), *converter)))
+      return failure();
     return success();
   }
 };
@@ -591,8 +595,9 @@ void populateTritonPatterns(TritonGPUTypeConverter &typeConverter,
       TritonExpandDimsPattern,
       TritonTransPattern,
       TritonDotPattern,
-      GatherScatterOpPattern<DescriptorGatherOp>,
-      GatherScatterOpPattern<DescriptorScatterOp>,
+      // TODO: MACA DIST support Descriptor op
+      //GatherScatterOpPattern<DescriptorGatherOp>,
+      //GatherScatterOpPattern<DescriptorScatterOp>,
       GenericOpPattern<triton::LoadOp>,
       GenericOpPattern<triton::StoreOp>,
       GenericOpPattern<triton::HistogramOp>,
@@ -602,11 +607,12 @@ void populateTritonPatterns(TritonGPUTypeConverter &typeConverter,
       GenericOpPattern<triton::AssertOp>,
       GenericOpPattern<triton::AtomicCASOp>,
       GenericOpPattern<triton::AtomicRMWOp>,
-      GenericOpPattern<triton::DescriptorLoadOp>,
-      GenericOpPattern<triton::DescriptorStoreOp>,
-      GenericOpPattern<triton::DescriptorReduceOp>,
+      // TODO: MACA DIST support Descriptor ops
+      // GenericOpPattern<triton::DescriptorLoadOp>,
+      // GenericOpPattern<triton::DescriptorStoreOp>,
+      // GenericOpPattern<triton::DescriptorReduceOp>,
       // this assumes the right layout will be set later for dot scaled.
-      GenericOpPattern<triton::DotScaledOp>,
+      // GenericOpPattern<triton::DotScaledOp>,
       GenericOpPattern<triton::CallOp>,
       GenericOpPattern<ReturnOp>,
       TritonFuncOpPattern
@@ -618,12 +624,12 @@ void populateTritonPatterns(TritonGPUTypeConverter &typeConverter,
 // isn't strictly necessary however you could envision a case where we pass in
 // tensors in for Triton object specific tracing operations in which case we
 // would need to fill in the OpConversionPattern
-void populateProtonPatterns(TritonGPUTypeConverter &typeConverter,
-                            RewritePatternSet &patterns) {
-  MLIRContext *context = patterns.getContext();
-  patterns.add<GenericOpPattern<triton::proton::RecordOp>>(typeConverter,
-                                                           context);
-}
+// void populateProtonPatterns(TritonGPUTypeConverter &typeConverter,
+//                             RewritePatternSet &patterns) {
+//   MLIRContext *context = patterns.getContext();
+//   patterns.add<GenericOpPattern<triton::proton::RecordOp>>(typeConverter,
+//                                                            context);
+// }
 
 // Distributed patterns
 void populateDistributedPatterns(TritonGPUTypeConverter &typeConverter,
@@ -635,93 +641,93 @@ void populateDistributedPatterns(TritonGPUTypeConverter &typeConverter,
       typeConverter, context);
 }
 
-Value promoteToShared(Value val, RewriterBase &rewriter, Location loc) {
-  auto tensorTy = dyn_cast<RankedTensorType>(val.getType());
-  if (!tensorTy)
-    return val;
-  auto encoding = getSharedEncoding(tensorTy);
-  Attribute sharedMemorySpace =
-      triton::gpu::SharedMemorySpaceAttr::get(tensorTy.getContext());
-  MemDescType newMemDescType =
-      MemDescType::get(tensorTy.getShape(), tensorTy.getElementType(), encoding,
-                       sharedMemorySpace, /*mutableMemory=*/true);
-  Value alloc = rewriter.create<triton::gpu::LocalAllocOp>(loc, newMemDescType);
-  rewriter.create<triton::gpu::LocalStoreOp>(loc, val, alloc);
-  return alloc;
-};
+// Value promoteToShared(Value val, RewriterBase &rewriter, Location loc) {
+//   auto tensorTy = dyn_cast<RankedTensorType>(val.getType());
+//   if (!tensorTy)
+//     return val;
+//   auto encoding = getSharedEncoding(tensorTy);
+//   Attribute sharedMemorySpace =
+//       triton::gpu::SharedMemorySpaceAttr::get(tensorTy.getContext());
+//   MemDescType newMemDescType =
+//       MemDescType::get(tensorTy.getShape(), tensorTy.getElementType(), encoding,
+//                        sharedMemorySpace, /*mutableMemory=*/true);
+//   Value alloc = rewriter.create<triton::gpu::LocalAllocOp>(loc, newMemDescType);
+//   rewriter.create<triton::gpu::LocalStoreOp>(loc, val, alloc);
+//   return alloc;
+// };
 
-struct SIMTExecRegionPattern
-    : public OpConversionPattern<simt::SIMTExecRegionOp> {
-  using OpConversionPattern::OpConversionPattern;
+// struct SIMTExecRegionPattern
+//     : public OpConversionPattern<simt::SIMTExecRegionOp> {
+//   using OpConversionPattern::OpConversionPattern;
 
-  LogicalResult
-  matchAndRewrite(simt::SIMTExecRegionOp op, OpAdaptor adaptor,
-                  ConversionPatternRewriter &rewriter) const override {
-    auto newOp = cast<simt::SIMTExecRegionOp>(
-        rewriter.cloneWithoutRegions(*op.getOperation()));
-    rewriter.inlineRegionBefore(op.getRegion(), newOp.getRegion(),
-                                newOp.getRegion().end());
+//   LogicalResult
+//   matchAndRewrite(simt::SIMTExecRegionOp op, OpAdaptor adaptor,
+//                   ConversionPatternRewriter &rewriter) const override {
+//     auto newOp = cast<simt::SIMTExecRegionOp>(
+//         rewriter.cloneWithoutRegions(*op.getOperation()));
+//     rewriter.inlineRegionBefore(op.getRegion(), newOp.getRegion(),
+//                                 newOp.getRegion().end());
 
-    // ops in simt region still use distributed tensor, will be promoted later.
-    if (failed(rewriter.convertRegionTypes(&newOp.getRegion(),
-                                           *getTypeConverter()))) {
-      return rewriter.notifyMatchFailure(op, "could not convert body types");
-    }
+//     // ops in simt region still use distributed tensor, will be promoted later.
+//     if (failed(rewriter.convertRegionTypes(&newOp.getRegion(),
+//                                            *getTypeConverter()))) {
+//       return rewriter.notifyMatchFailure(op, "could not convert body types");
+//     }
 
-    // promote operands to shared memory
-    SmallVector<Value> newOperands = adaptor.getOperands();
-    {
-      OpBuilder::InsertionGuard g(rewriter);
-      rewriter.setInsertionPoint(newOp);
-      for (size_t i = 0; i < newOp->getNumOperands(); ++i) {
-        auto curOperand = newOperands[i];
-        newOperands[i] = promoteToShared(curOperand, rewriter, op->getLoc());
-      }
-    }
-    newOp->setOperands(newOperands);
+//     // promote operands to shared memory
+//     SmallVector<Value> newOperands = adaptor.getOperands();
+//     {
+//       OpBuilder::InsertionGuard g(rewriter);
+//       rewriter.setInsertionPoint(newOp);
+//       for (size_t i = 0; i < newOp->getNumOperands(); ++i) {
+//         auto curOperand = newOperands[i];
+//         newOperands[i] = promoteToShared(curOperand, rewriter, op->getLoc());
+//       }
+//     }
+//     newOp->setOperands(newOperands);
 
-    // Update the result types to the new converted types.
-    SmallVector<Type> newResultTypes;
-    int32_t cnt = 0;
-    for (Type type : op.getResultTypes()) {
-      Type newType = newOperands[cnt].getType();
-      newResultTypes.push_back(newType);
-      cnt += 1;
-    }
-    for (auto t : llvm::zip(newOp.getResults(), newOperands))
-      std::get<0>(t).setType(std::get<1>(t).getType());
+//     // Update the result types to the new converted types.
+//     SmallVector<Type> newResultTypes;
+//     int32_t cnt = 0;
+//     for (Type type : op.getResultTypes()) {
+//       Type newType = newOperands[cnt].getType();
+//       newResultTypes.push_back(newType);
+//       cnt += 1;
+//     }
+//     for (auto t : llvm::zip(newOp.getResults(), newOperands))
+//       std::get<0>(t).setType(std::get<1>(t).getType());
 
-    // store result into distributed tensor
-    SmallVector<Value> newResults = newOp.getResults();
-    {
-      OpBuilder::InsertionGuard g(rewriter);
-      rewriter.setInsertionPointAfter(newOp);
-      for (size_t i = 0; i < op.getNumResults(); ++i) {
-        auto curResult = newResults[i];
-        auto memDescType = dyn_cast<MemDescType>(curResult.getType());
-        if (memDescType && memDescType.getMemorySpace() &&
-            isa<SharedMemorySpaceAttr>(memDescType.getMemorySpace())) {
-          Type oldDistType =
-              typeConverter->convertType(op->getResult(i).getType());
-          Value output = rewriter.create<LocalLoadOp>(op->getLoc(), oldDistType,
-                                                      curResult);
-          newResults[i] = output;
-        }
-      }
-    }
-    rewriter.replaceOp(op, newResults);
+//     // store result into distributed tensor
+//     SmallVector<Value> newResults = newOp.getResults();
+//     {
+//       OpBuilder::InsertionGuard g(rewriter);
+//       rewriter.setInsertionPointAfter(newOp);
+//       for (size_t i = 0; i < op.getNumResults(); ++i) {
+//         auto curResult = newResults[i];
+//         auto memDescType = dyn_cast<MemDescType>(curResult.getType());
+//         if (memDescType && memDescType.getMemorySpace() &&
+//             isa<SharedMemorySpaceAttr>(memDescType.getMemorySpace())) {
+//           Type oldDistType =
+//               typeConverter->convertType(op->getResult(i).getType());
+//           Value output = rewriter.create<LocalLoadOp>(op->getLoc(), oldDistType,
+//                                                       curResult);
+//           newResults[i] = output;
+//         }
+//       }
+//     }
+//     rewriter.replaceOp(op, newResults);
 
-    return success();
-  }
-};
+//     return success();
+//   }
+// };
 
-// SIMT patterns
-void populateSIMTPatterns(TritonGPUTypeConverter &typeConverter,
-                          RewritePatternSet &patterns) {
-  MLIRContext *context = patterns.getContext();
-  patterns.add<SIMTExecRegionPattern, GenericOpPattern<simt::BlockYieldOp>>(
-      typeConverter, context);
-}
+// // SIMT patterns
+// void populateSIMTPatterns(TritonGPUTypeConverter &typeConverter,
+//                           RewritePatternSet &patterns) {
+//   MLIRContext *context = patterns.getContext();
+//   patterns.add<SIMTExecRegionPattern, GenericOpPattern<simt::BlockYieldOp>>(
+//       typeConverter, context);
+// }
 
 void populateTensorPatterns(TritonGPUTypeConverter &typeConverter,
                             RewritePatternSet &patterns) {
@@ -924,149 +930,149 @@ Value unrealizedCastMaterialization(OpBuilder &builder, Type type,
   return cast.getResult(0);
 }
 
-class SIMTRegionTypeConverter : public TypeConverter {
-public:
-  SIMTRegionTypeConverter(MLIRContext *context, int numWarps,
-                          int threadsPerWarp, int numCTAs)
-      : context(context), numWarps(numWarps), threadsPerWarp(threadsPerWarp),
-        numCTAs(numCTAs) {
-    addConversion([](Type type) { return type; });
+// class SIMTRegionTypeConverter : public TypeConverter {
+// public:
+//   SIMTRegionTypeConverter(MLIRContext *context, int numWarps,
+//                           int threadsPerWarp, int numCTAs)
+//       : context(context), numWarps(numWarps), threadsPerWarp(threadsPerWarp),
+//         numCTAs(numCTAs) {
+//     addConversion([](Type type) { return type; });
 
-    // Add encoding for tensor
-    addConversion([this](RankedTensorType tensorType) -> MemDescType {
-      // types with encoding are already in the right format
-      // TODO: check for layout encodings more specifically
-      if (!tensorType.getEncoding()) {
-        ArrayRef<int64_t> shape = tensorType.getShape();
-        triton::gpu::BlockedEncodingAttr encoding =
-            getDefaultBlockedEncoding(this->context, shape, this->numWarps,
-                                      this->threadsPerWarp, this->numCTAs);
-        tensorType =
-            RankedTensorType::get(shape, tensorType.getElementType(), encoding);
-      }
-      auto encoding = getSharedEncoding(tensorType);
-      Attribute sharedMemorySpace =
-          triton::gpu::SharedMemorySpaceAttr::get(tensorType.getContext());
-      MemDescType memDescType =
-          MemDescType::get(tensorType.getShape(), tensorType.getElementType(),
-                           encoding, sharedMemorySpace, /*mutableMemory=*/true);
-      return memDescType;
-    });
+//     // Add encoding for tensor
+//     addConversion([this](RankedTensorType tensorType) -> MemDescType {
+//       // types with encoding are already in the right format
+//       // TODO: check for layout encodings more specifically
+//       if (!tensorType.getEncoding()) {
+//         ArrayRef<int64_t> shape = tensorType.getShape();
+//         triton::gpu::BlockedEncodingAttr encoding =
+//             getDefaultBlockedEncoding(this->context, shape, this->numWarps,
+//                                       this->threadsPerWarp, this->numCTAs);
+//         tensorType =
+//             RankedTensorType::get(shape, tensorType.getElementType(), encoding);
+//       }
+//       auto encoding = getSharedEncoding(tensorType);
+//       Attribute sharedMemorySpace =
+//           triton::gpu::SharedMemorySpaceAttr::get(tensorType.getContext());
+//       MemDescType memDescType =
+//           MemDescType::get(tensorType.getShape(), tensorType.getElementType(),
+//                            encoding, sharedMemorySpace, /*mutableMemory=*/true);
+//       return memDescType;
+//     });
 
-    // Add encoding for tensor pointer
-    addConversion([this](triton::PointerType ptrType) -> triton::PointerType {
-      // Check whether tensor pointer `tt.ptr<tensor<>>`
-      auto pointeeTensorType =
-          dyn_cast<RankedTensorType>(ptrType.getPointeeType());
-      if (pointeeTensorType == nullptr)
-        return ptrType;
+//     // Add encoding for tensor pointer
+//     addConversion([this](triton::PointerType ptrType) -> triton::PointerType {
+//       // Check whether tensor pointer `tt.ptr<tensor<>>`
+//       auto pointeeTensorType =
+//           dyn_cast<RankedTensorType>(ptrType.getPointeeType());
+//       if (pointeeTensorType == nullptr)
+//         return ptrType;
 
-      // Add layout into the tensor
-      auto convertedTensorType = convertType(pointeeTensorType);
-      return triton::PointerType::get(convertedTensorType,
-                                      ptrType.getAddressSpace());
-    });
+//       // Add layout into the tensor
+//       auto convertedTensorType = convertType(pointeeTensorType);
+//       return triton::PointerType::get(convertedTensorType,
+//                                       ptrType.getAddressSpace());
+//     });
 
-    addSourceMaterialization(unrealizedCastMaterialization);
-    addTargetMaterialization(unrealizedCastMaterialization);
-  }
-  int getNumWarps() const { return numWarps; }
-  int getThreadsPerWarp() const { return threadsPerWarp; }
-  int getNumCTAs() const { return numCTAs; }
+//     addSourceMaterialization(unrealizedCastMaterialization);
+//     addTargetMaterialization(unrealizedCastMaterialization);
+//   }
+//   int getNumWarps() const { return numWarps; }
+//   int getThreadsPerWarp() const { return threadsPerWarp; }
+//   int getNumCTAs() const { return numCTAs; }
 
-private:
-  MLIRContext *context;
-  int numWarps;
-  int threadsPerWarp;
-  int numCTAs;
-};
+// private:
+//   MLIRContext *context;
+//   int numWarps;
+//   int threadsPerWarp;
+//   int numCTAs;
+// };
 
-struct TensorExtractPromotionPattern
-    : public OpConversionPattern<tensor::ExtractOp> {
-  using OpConversionPattern::OpConversionPattern;
+// struct TensorExtractPromotionPattern
+//     : public OpConversionPattern<tensor::ExtractOp> {
+//   using OpConversionPattern::OpConversionPattern;
 
-  LogicalResult
-  matchAndRewrite(tensor::ExtractOp op, OpAdaptor adaptor,
-                  ConversionPatternRewriter &rewriter) const override {
+//   LogicalResult
+//   matchAndRewrite(tensor::ExtractOp op, OpAdaptor adaptor,
+//                   ConversionPatternRewriter &rewriter) const override {
 
-    simt::SIMTExecRegionOp simtExecRegionOp =
-        op->getParentOfType<simt::SIMTExecRegionOp>();
-    if (!simtExecRegionOp)
-      return failure();
+//     simt::SIMTExecRegionOp simtExecRegionOp =
+//         op->getParentOfType<simt::SIMTExecRegionOp>();
+//     if (!simtExecRegionOp)
+//       return failure();
 
-    auto isValueOutOfRegion = [&](Value value) -> bool {
-      Region *defRegion;
+//     auto isValueOutOfRegion = [&](Value value) -> bool {
+//       Region *defRegion;
 
-      if (auto blockArg = dyn_cast<BlockArgument>(value)) {
-        Block *block = blockArg.getOwner();
-        defRegion = block->getParent();
-        for (Region &region : simtExecRegionOp->getRegions()) {
-          if (region.isAncestor(defRegion)) {
-            return false;
-          }
-        }
-      } else {
-        Operation *defOp = value.getDefiningOp();
-        if (!defOp)
-          return true;
-        if (auto curRegionOp =
-                defOp->getParentOfType<simt::SIMTExecRegionOp>()) {
-          return curRegionOp != simtExecRegionOp;
-        } else {
-          return true;
-        }
-      }
-      return true;
-    };
+//       if (auto blockArg = dyn_cast<BlockArgument>(value)) {
+//         Block *block = blockArg.getOwner();
+//         defRegion = block->getParent();
+//         for (Region &region : simtExecRegionOp->getRegions()) {
+//           if (region.isAncestor(defRegion)) {
+//             return false;
+//           }
+//         }
+//       } else {
+//         Operation *defOp = value.getDefiningOp();
+//         if (!defOp)
+//           return true;
+//         if (auto curRegionOp =
+//                 defOp->getParentOfType<simt::SIMTExecRegionOp>()) {
+//           return curRegionOp != simtExecRegionOp;
+//         } else {
+//           return true;
+//         }
+//       }
+//       return true;
+//     };
 
-    Value src;
-    {
-      OpBuilder::InsertionGuard g(rewriter);
-      rewriter.setInsertionPoint(simtExecRegionOp);
-      // some tensors that are only read by op within simt region are not
-      // captured by SIMTExecRegionOp
-      if (isValueOutOfRegion(adaptor.getTensor())) {
-        // promote the origin tensor, not the converted.
-        src = promoteToShared(op.getTensor(), rewriter, op->getLoc());
-      } else {
-        src = adaptor.getTensor();
-      }
-    }
+//     Value src;
+//     {
+//       OpBuilder::InsertionGuard g(rewriter);
+//       rewriter.setInsertionPoint(simtExecRegionOp);
+//       // some tensors that are only read by op within simt region are not
+//       // captured by SIMTExecRegionOp
+//       if (isValueOutOfRegion(adaptor.getTensor())) {
+//         // promote the origin tensor, not the converted.
+//         src = promoteToShared(op.getTensor(), rewriter, op->getLoc());
+//       } else {
+//         src = adaptor.getTensor();
+//       }
+//     }
 
-    SmallVector<Type> retTypes;
-    auto srcType = src.getType();
-    if (auto memDescType = dyn_cast<MemDescType>(srcType)) {
-      auto newOp = rewriter.create<simt::LoadSharedOp>(op->getLoc(), src,
-                                                       adaptor.getIndices());
-      rewriter.replaceOp(op, newOp.getResult());
-    } else {
-      return failure();
-    }
+//     SmallVector<Type> retTypes;
+//     auto srcType = src.getType();
+//     if (auto memDescType = dyn_cast<MemDescType>(srcType)) {
+//       auto newOp = rewriter.create<simt::LoadSharedOp>(op->getLoc(), src,
+//                                                        adaptor.getIndices());
+//       rewriter.replaceOp(op, newOp.getResult());
+//     } else {
+//       return failure();
+//     }
 
-    return success();
-  }
-};
+//     return success();
+//   }
+// };
 
-struct TensorInsertPromotionPattern
-    : public OpConversionPattern<tensor::InsertOp> {
-  using OpConversionPattern::OpConversionPattern;
+// struct TensorInsertPromotionPattern
+//     : public OpConversionPattern<tensor::InsertOp> {
+//   using OpConversionPattern::OpConversionPattern;
 
-  LogicalResult
-  matchAndRewrite(tensor::InsertOp op, OpAdaptor adaptor,
-                  ConversionPatternRewriter &rewriter) const override {
-    auto srcType = adaptor.getDest().getType();
-    SmallVector<Type> retTypes;
-    if (auto memDescType = dyn_cast<MemDescType>(srcType)) {
-      auto newOp = rewriter.create<simt::StoreSharedOp>(
-          op->getLoc(), adaptor.getScalar(), adaptor.getDest(),
-          adaptor.getIndices());
-      rewriter.replaceOp(op, adaptor.getDest());
-    } else {
-      return failure();
-    }
-    return success();
-  }
-};
+//   LogicalResult
+//   matchAndRewrite(tensor::InsertOp op, OpAdaptor adaptor,
+//                   ConversionPatternRewriter &rewriter) const override {
+//     auto srcType = adaptor.getDest().getType();
+//     SmallVector<Type> retTypes;
+//     if (auto memDescType = dyn_cast<MemDescType>(srcType)) {
+//       auto newOp = rewriter.create<simt::StoreSharedOp>(
+//           op->getLoc(), adaptor.getScalar(), adaptor.getDest(),
+//           adaptor.getIndices());
+//       rewriter.replaceOp(op, adaptor.getDest());
+//     } else {
+//       return failure();
+//     }
+//     return success();
+//   }
+// };
 
 // This is borrowed from SCFForOpPattern
 struct SCFForOpPromotionPattern : public OpConversionPattern<scf::ForOp> {
@@ -1140,6 +1146,7 @@ public:
   }
 };
 
+/*
 struct SIMTExecRegionPromotionPattern
     : public OpConversionPattern<simt::SIMTExecRegionOp> {
   using OpConversionPattern::OpConversionPattern;
@@ -1233,6 +1240,7 @@ void populateSIMTReigonPromotionPattern(SIMTRegionTypeConverter &typeConverter,
   patterns.add<SIMTExecRegionPromotionPattern,
                GenericOpPattern<simt::BlockYieldOp>>(typeConverter, context);
 }
+*/
 
 // Modified from the upstream ConvertTritonToTritonGPU, add simt and distributed
 // extensions
@@ -1263,13 +1271,16 @@ public:
     MLIRContext *context = &getContext();
     ModuleOp mod = getOperation();
     // type converter
+    // TritonGPUTypeConverter typeConverter(context, numWarps, threadsPerWarp,
+    //                                      numCTAs, enableSourceRemat);
+    // TODO: MACA DIST triton 3.0 typeConverter dont support enableSourceRemat
     TritonGPUTypeConverter typeConverter(context, numWarps, threadsPerWarp,
-                                         numCTAs, enableSourceRemat);
+                                         numCTAs);
     TritonGPUConversionTarget target(*context, typeConverter);
 
     // triton distributed extension
     target.addDynamicallyLegalDialect<tensor::TensorDialect,
-                                      triton::simt::SIMTDialect,
+                                      //triton::simt::SIMTDialect,
                                       triton::distributed::DistributedDialect>(
         [&](Operation *op) {
           bool hasLegalRegions = true;
@@ -1288,10 +1299,10 @@ public:
     populateArithPatternsAndLegality(typeConverter, patterns, target);
     populateMathPatternsAndLegality(typeConverter, patterns, target);
     populateTritonPatterns(typeConverter, patterns, numCTAs);
-    populateProtonPatterns(typeConverter, patterns);
+    // populateProtonPatterns(typeConverter, patterns);
     populateDistributedPatterns(typeConverter, patterns);
     populateTensorPatterns(typeConverter, patterns);
-    populateSIMTPatterns(typeConverter, patterns);
+    // populateSIMTPatterns(typeConverter, patterns);
     // TODO: can we use
     //    mlir::scf::populateSCFStructurealTypeConversionsAndLegality(...) here?
     populateSCFPatterns(typeConverter, patterns);
@@ -1317,6 +1328,7 @@ public:
     LLVM_DEBUG({ DBGS() << "after TritonGPUConversion = \n" << mod << "\n"; });
 
     // promote memory space in simt region to ttg.memdesc
+    /*
     {
       ConversionTarget target(*context);
       target.addLegalDialect<triton::gpu::TritonGPUDialect>();
@@ -1356,6 +1368,7 @@ public:
     }
 
     LLVM_DEBUG({ DBGS() << "after simt promotion = \n" << mod << "\n"; });
+    */
 
     // clean up: ForOp/IfOp dead arg elimination
     {
@@ -1364,7 +1377,9 @@ public:
       scf::ForOp::getCanonicalizationPatterns(cleanUpPatterns, context);
       scf::IfOp::getCanonicalizationPatterns(cleanUpPatterns, context);
       ConvertLayoutOp::getCanonicalizationPatterns(cleanUpPatterns, context);
-      if (applyPatternsGreedily(getOperation(), std::move(cleanUpPatterns))
+      // TODO: MACA DIST 3.0 dont support applyPatternsGreedily
+      // if (applyPatternsGreedily(getOperation(), std::move(cleanUpPatterns))
+      if (applyPatternsAndFoldGreedily(getOperation(), std::move(cleanUpPatterns))
               .failed()) {
         signalPassFailure();
       }

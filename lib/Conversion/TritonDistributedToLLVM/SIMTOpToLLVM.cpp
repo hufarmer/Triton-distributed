@@ -41,7 +41,6 @@ using namespace std::literals;
 
 namespace {
 
-// TODO: MACA DIST support ttg::MemDescType
 Value getSharedMemAddress(RewriterBase &rewriter,
                           const SharedMemoryObject &smemObj,
                           const SmallVector<Value> &indices,
