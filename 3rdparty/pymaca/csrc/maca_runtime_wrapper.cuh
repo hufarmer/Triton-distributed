@@ -75,8 +75,5 @@ std::tuple<mcError_t> mcExtBatchCopyFlagAndWaitWrapper(std::vector<int64_t> &dst
 
     auto result = mcExtBatchCopyFlagAndWait(copyBatchArray.data(), reqNum, nullptr, 0, reinterpret_cast<mcStream_t>(stream));
     return std::make_tuple(result);
-
-    // mcError_t mcExtBatchCopyFlagAndWait(mcCopyFlag_t *copyBatch, size_t cpBatchSize, mcWait_t *waitBatch,
-    //                                     size_t waitBatchSize, mcStream_t stream);
 }
 

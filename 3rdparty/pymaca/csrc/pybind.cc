@@ -6,7 +6,6 @@
 
 namespace py = pybind11;
 
-
 PYBIND11_MODULE(maca, m) {
     py::module_ maca_m = m.def_submodule("maca");
     py::module_ macart_m = m.def_submodule("macart");
@@ -37,8 +36,6 @@ PYBIND11_MODULE(maca, m) {
         .value("MC_STREAM_WAIT_VALUE_NOR", mcStreamWaitValue_flags::MC_STREAM_WAIT_VALUE_NOR)
         .value("MC_STREAM_WAIT_VALUE_FLUSH", mcStreamWaitValue_flags::MC_STREAM_WAIT_VALUE_FLUSH)
         .export_values();
-    // py::enum_<mcDrvError_t>(maca_m, "mcDrvError_t")
-    //     .value("MC_SUCCESS", mcDrvError_t::MC_SUCCESS);
     maca_m.def("mcStreamWaitValue32", &mcStreamWaitValue32Wrapper, "A wrapper for mcStreamWaitValue32");
     maca_m.def("mcStreamWaitValue64", &mcStreamWaitValue64Wrapper, "A wrapper for mcStreamWaitValue64");
     maca_m.def("mcGetErrorName", &mcGetErrorNameWrapper, "A wrapper for mcGetErrorName");

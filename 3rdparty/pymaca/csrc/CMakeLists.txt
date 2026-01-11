@@ -6,7 +6,6 @@ find_package(
   REQUIRED)
 find_program(PYTHON_EXECUTABLE NAMES python3 python)
 
-# find MACA_PATH
 if(DEFINED ENV{MACA_PATH})
     set(MACA_PATH $ENV{MACA_PATH})
     message(STATUS "Using maca path from environment")
@@ -33,8 +32,6 @@ find_path(MACA_LIBRARY_DIR
 message(STATUS "Found MACA_INCLUDE_DIR: ${MACA_INCLUDE_DIR}")
 message(STATUS "Found MACA_LIBRARY_DIR: ${MACA_LIBRARY_DIR}")
 
-# ${MACA_PATH}/include/
-# ${MACA_PATH}/include/mcr
 include_directories(${MACA_INCLUDE_DIR})
 include_directories(${MACA_INCLUDE_DIR}/mcr/)
 
@@ -51,9 +48,6 @@ if(NOT _PYTHON_SUCCESS MATCHES 0)
 endif()
 list(APPEND CMAKE_PREFIX_PATH ${PYBIND11_DIR})
 find_package(pybind11 REQUIRED)
-
-# file(GLOB CU_FILES "*.cu")
-# message(STATUS "cu files: ${CU_FILES}")
 
 file(GLOB LIB_FILES "pybind.cc")
 message(STATUS "lib files: ${LIB_FILES}")
