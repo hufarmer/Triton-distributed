@@ -59,32 +59,6 @@ message(STATUS "CUDA include directories: ${CUDA_INCLUDE_DIRS}")
 
 set_target_properties(pvmxshmem PROPERTIES CXX_STANDARD 17
                                            CUDA_RESOLVE_DEVICE_SYMBOLS ON)
-#find_library(MXSHMEM_HOST_LIB
-#    NAMES mxshmem_host  # 对应libmxshmem_host.so
-#    PATHS /home/jjiang/code/tmp_triton/third_party/triton_dist/3rdparty/mxshmem/build  # 库所在的目录（若tmp是项目内子目录，用${CMAKE_SOURCE_DIR}/tmp）
-#    NO_DEFAULT_PATH  # 仅搜索指定的PATHS，不搜索默认系统路径
-#    REQUIRED  # 找不到库则直接报错
-#)
-
-# 2. 同理查找libmxshmem_device.so（若它也在tmp目录）
-#find_library(MXSHMEM_DEVICE_LIB
-#    NAMES mxshmem_device
-#    PATHS /home/jjiang/code/tmp_triton/third_party/triton_dist/3rdparty/mxshmem/build
-#    NO_DEFAULT_PATH
-#    REQUIRED
-#)
-#message(FATAL_ERROR "MXSHMEM_HOST_LIB: ${MXSHMEM_HOST_LIB}")
-#message(FATAL_ERROR "MXSHMEM_DEVICE_LIB: ${MXSHMEM_DEVICE_LIB}")
-# 3. 修改target_link_libraries，替换原来的mxshmem::mxshmem_host为找到的库
-#target_link_libraries(pvmxshmem PRIVATE
-#    ${MXSHMEM_HOST_LIB}    # 用找到的tmp目录下的libmxshmem_host.so
-#    ${MXSHMEM_DEVICE_LIB}  # 同理处理device库
-#    torch
-#    ${TORCH_PYTHON_LIBRARY}
-#)
-
-#set(MXSHMEM_INCLUDE_DIRS "/home/jjiang/code/tmp_triton/third_party/triton_dist/3rdparty/mxshmem/src/include")
-#message("MXSHMEM_INCLUDE_DIRS:$MXSHMEM_INCLUDE_DIRS")
 
 target_link_libraries(pvmxshmem PRIVATE mxshmem::mxshmem_host
                                         mxshmem::mxshmem_device

@@ -1,27 +1,3 @@
-################################################################################
-#
-# Copyright (c) 2025 ByteDance Ltd. and/or its affiliates
-#
-# Permission is hereby granted, free of charge, to any person obtaining
-# a copy of this software and associated documentation files
-# (the "Software"), to deal in the Software without restriction,
-# including without limitation the rights to use, copy, modify, merge,
-# publish, distribute, sublicense, and/or sell copies of the Software,
-# and to permit persons to whom the Software is furnished to do so,
-# subject to the following conditions:
-#
-# The above copyright notice and this permission notice shall be
-# included in all copies or substantial portions of the Software.
-#
-# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
-# EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-# MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-# IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
-# CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
-# TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
-# SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-#
-################################################################################
 from typing import List, Sequence
 
 import sys
@@ -45,11 +21,11 @@ MXSHMEM_TEAMS_MIN = 6
 MXSHMEM_TEAM_INDEX_MAX = sys.maxsize
 
 
-def mxshmemx_cumodule_init(module: np.intp) -> None:
+def mxshmemx_mcmodule_init(module: np.intp) -> None:
     ...
 
 
-def mxshmemx_cumodule_finalize(module: np.intp) -> None:
+def mxshmemx_mcmodule_finalize(module: np.intp) -> None:
     ...
 
 
@@ -78,14 +54,6 @@ def mxshmem_barrier_all_on_stream():
 
 
 def mxshmem_ptr(ptr, peer):
-    ...
-
-
-def mxshmemx_mc_ptr(team, ptr):
-    """ DON'T CALL this function if NVLS is not used on NVSHMEM 3.2.5!!!
-    even nvshmem official doc say that it returns a nullptr(https://docs.nvidia.com/nvshmem/api/gen/api/setup.html?highlight=nvshmemx_mc_ptr#nvshmemx-mc-ptr), it actually core dump without any notice. use this function only when you are sure NVLS is used.
-    here is an issue: https://forums.developer.nvidia.com/t/how-do-i-query-if-nvshmemx-mc-ptr-is-supported-nvshmemx-mc-ptr-core-dump-if-nvls-is-not-used/328986
-    """
     ...
 
 

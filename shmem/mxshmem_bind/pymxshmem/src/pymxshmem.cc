@@ -1,28 +1,5 @@
-/*
- * Copyright (c) 2025 ByteDance Ltd. and/or its affiliates
- *
- * Permission is hereby granted, free of charge, to any person obtaining
- * a copy of this software and associated documentation files
- * (the "Software"), to deal in the Software without restriction,
- * including without limitation the rights to use, copy, modify, merge,
- * publish, distribute, sublicense, and/or sell copies of the Software,
- * and to permit persons to whom the Software is furnished to do so,
- * subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be
- * included in all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
- * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
- * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
- * IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
- * CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
- * TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
- * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
- */
 #include "c10/cuda/CUDAGuard.h"
 #include <ATen/ops/from_blob.h>
-// #include <bootstrap_device_host/mxshmem_uniqueid.h>
 #include <host_device_common/mxshmem_types.h>
 #include <c10/core/ScalarType.h>
 #include <c10/cuda/CUDAFunctions.h>
@@ -140,34 +117,22 @@ mxshmem_create_tensor_list(const std::vector<int64_t> &shape,
   int local_rank = mxshmem_team_my_pe(MXSHMEMX_TEAM_NODE);
   std::vector<torch::Tensor> tensors;
   tensors.reserve(local_world_size);
-  // std::cerr << "enter mxshmem_malloc\n";
   at::cuda::device_synchronize();
-  // std::cerr << "do mxshmem_malloc\n";
   void *ptr = mxshmem_malloc(size);
-  // std::cerr << "exit mxshmem_malloc " << ptr << "\n";
 
   CUDA_CHECK(cudaMemset(ptr, 0, size)); // memset the allocated buffer
   PYMXSHMEM_CHECK(ptr != nullptr);
   int rank_offset = rank - local_rank;
   for (int i = 0; i < local_world_size; i++) {
-    // runs this call mxshmem failure, don't know why
-    //  mxshmem_team_translate_pe(MXSHMEMX_TEAM_NODE, local_rank,
-    //  MXSHMEM_TEAM_WORLD)
     int rank_global = i + rank_offset;
     if (rank == rank_global) {
       tensors.emplace_back(at::from_blob(
           ptr, shape,
           [=](void *ptr) {
-            // std::cerr << "enter mxshmem_free "
-            // << ptr << "\n";
             at::cuda::CUDAGuard guard(current_device);
             at::cuda::device_synchronize();
-            // std::cerr << "do mxshmem_free " <<
-            // ptr << "\n";
             mxshmem_free(ptr);
             at::cuda::device_synchronize();
-            // std::cerr << "exit mxshmem_free "
-            // << ptr << "\n";
           },
           option_gpu));
     } else {
@@ -181,11 +146,11 @@ mxshmem_create_tensor_list(const std::vector<int64_t> &shape,
 }
 
 PYBIND11_MODULE(_pymxshmem, m) {
-  m.def("mxshmemx_cumodule_init", [](intptr_t module) {
-    CHECK_MXSHMEMX(mxshmemx_cumodule_init((CUmodule)module));
+  m.def("mxshmemx_mcmodule_init", [](intptr_t module) {
+    CHECK_MXSHMEMX(mxshmemx_mcmodule_init((CUmodule)module));
   });
-  m.def("mxshmemx_cumodule_finalize", [](intptr_t module) {
-    CHECK_MXSHMEMX(mxshmemx_cumodule_finalize((CUmodule)module));
+  m.def("mxshmemx_mcmodule_finalize", [](intptr_t module) {
+    CHECK_MXSHMEMX(mxshmemx_mcmodule_finalize((CUmodule)module));
   });
   m.def("mxshmem_malloc", [](size_t size) {
     void *ptr = mxshmem_malloc(size);
@@ -197,9 +162,6 @@ PYBIND11_MODULE(_pymxshmem, m) {
   m.def("mxshmem_ptr", [](intptr_t ptr, int peer) {
     return (intptr_t)mxshmem_ptr((void *)ptr, peer);
   });
-  // m.def("mxshmemx_mc_ptr", [](mxshmemx_team_t team, intptr_t ptr) {
-  //   return (intptr_t)mxshmemx_mc_ptr(team, (void *)ptr);
-  // });
   m.def("mxshmemx_get_uniqueid", []() {
     mxshmemx_uniqueid_t id;
     CHECK_MXSHMEMX(mxshmemx_get_uniqueid(&id));

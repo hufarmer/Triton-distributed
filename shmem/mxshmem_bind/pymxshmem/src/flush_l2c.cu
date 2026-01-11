@@ -2,7 +2,7 @@
 
 __global__ void flush_l2c_dev() {
     asm ("wb_l2");
-    asm ("arrive 0x40");//等待wb_l2执行完
+    asm ("arrive 0x40");
     asm ("inv_l2");
 }
 

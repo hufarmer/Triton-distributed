@@ -84,7 +84,7 @@ def shmem_kernel_module_init_hook(*args, **kwargs) -> None:
         # TODO: add is_shmem_initialized for maca
         if "mxshmem" in kernel.asm['ttir']:
             import pymxshmem
-            pymxshmem.mxshmemx_cumodule_init(kernel_module)
+            pymxshmem.mxshmemx_mcmodule_init(kernel_module)
     else:
         raise ValueError("Unsupported device type for shmem kernel module init hook.")
 
