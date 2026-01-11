@@ -93,9 +93,7 @@ else()
 endif()
 
 if (TRITON_USE_MACA)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DUSE_MACA -DUSE_BUILTIN -Wno-unused-result -Wno-attributes")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DUSE_MACA_OPAQUE_PTR ")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DUSE_LLVM19_INTRINSIC ")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DUSE_MACA")
 endif()
 
 if (TRITON_BUILD_DISTRIBUTED)
@@ -208,23 +206,6 @@ if(TRITON_BUILD_PYTHON_MODULE)
   # Python Interpreter is used to run lit tests
   find_package(Python3 REQUIRED COMPONENTS Development.Module Interpreter)
   find_package(pybind11 CONFIG REQUIRED HINTS "${Python3_SITELIB}")
-
-  if(PYTHON_INCLUDE_DIRS)
-    # We have PYTHON_INCLUDE_DIRS set--this is what we expect when building
-    # using pip install.
-    include_directories(${PYTHON_INCLUDE_DIRS})
-    include_directories(${pybind11_INCLUDE_DIR})
-  else()
-    # Otherwise, we might be building from top CMakeLists.txt directly.
-    # Try to find Python and pybind11 packages.
-    find_package(Python3 REQUIRED COMPONENTS Development Interpreter)
-    find_package(pybind11 CONFIG REQUIRED HINTS "${Python3_SITELIB}")
-    include_directories(${Python3_INCLUDE_DIRS})
-    include_directories(${pybind11_INCLUDE_DIR})
-    link_directories(${Python3_LIBRARY_DIRS})
-    link_libraries(${Python3_LIBRARIES})
-    add_link_options(${Python3_LINK_OPTIONS})
-  endif()
 
   if (DEFINED TRITON_PLUGIN_DIRS)
     foreach(PLUGIN_DIR ${TRITON_PLUGIN_DIRS})
@@ -359,10 +340,10 @@ if(TRITON_BUILD_PYTHON_MODULE)
       message(FATAL_ERROR "TRITON_WHEEL_DIR must be set.")
   endif()
 
-#  configure_file(
-#    "${LLVM_SYSPATH}/bin/FileCheck"
-#    "${TRITON_WHEEL_DIR}/FileCheck"
-#    COPYONLY)
+  configure_file(
+    "${LLVM_SYSPATH}/bin/FileCheck"
+    "${TRITON_WHEEL_DIR}/FileCheck"
+    COPYONLY)
 
 endif()
 
