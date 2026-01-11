@@ -55,8 +55,6 @@ class MxSmiUtil:
         return numa_node if numa_node >= 0 else 0
 
 
-# TODO(MACA): support pynvml in future
-#_pynvml_initialized = False
 _lock = Lock()
 
 

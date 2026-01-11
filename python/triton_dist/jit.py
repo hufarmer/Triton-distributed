@@ -81,7 +81,6 @@ def shmem_kernel_module_init_hook(*args, **kwargs) -> None:
                                    hip.hipMemcpyKind.hipMemcpyHostToDevice)
             HIP_CHECK(cp_res)
     elif is_maca():
-        # TODO: add is_shmem_initialized for maca
         if "mxshmem" in kernel.asm['ttir']:
             import pymxshmem
             pymxshmem.mxshmemx_mcmodule_init(kernel_module)

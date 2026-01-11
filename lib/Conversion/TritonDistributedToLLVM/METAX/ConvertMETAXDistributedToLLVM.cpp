@@ -1,7 +1,5 @@
-#ifdef USE_MACA
 #include "TritonDistributed/Conversion/TritonDistributedToLLVM/Passes.h"
 #include "TritonDistributed/Dialect/Distributed/IR/Dialect.h"
-//#include "TritonDistributed/Dialect/SIMT/IR/Dialect.h"
 #include "mlir/Conversion/ArithToLLVM/ArithToLLVM.h"
 #include "mlir/Conversion/ControlFlowToLLVM/ControlFlowToLLVM.h"
 #include "mlir/Conversion/GPUToMACA/GPUToMACAPass.h"
@@ -31,8 +29,6 @@ using namespace mlir::triton::METAX;
 
 namespace {
 
-// some code adapt from
-// triton/third_party/nvidia/lib/TritonNVIDIAGPUToLLVM/TritonGPUToLLVM.cpp
 class TritonLLVMConversionTarget : public ConversionTarget {
 public:
   explicit TritonLLVMConversionTarget(MLIRContext &ctx)
@@ -61,8 +57,6 @@ struct ConvertMETAXDistributedToLLVM
 
     mlir::LowerToLLVMOptions option(context);
     option.overrideIndexBitwidth(32);
-    // TODO: MACA DIST
-    // TritonGPUToLLVMTypeConverter typeConverter(context, option, targetInfo);
     TritonGPUToLLVMTypeConverter typeConverter(context, option);
 
     RewritePatternSet patterns(context);
@@ -105,4 +99,3 @@ createConvertMETAXDistributedToLLVMPass(int32_t computeCapability) {
 
 } // namespace triton
 } // namespace mlir
-#endif

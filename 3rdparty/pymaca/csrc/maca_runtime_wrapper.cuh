@@ -56,7 +56,6 @@ std::tuple<mcError_t> mcExtBatchCopyFlagAndWaitWrapper(std::vector<int64_t> &dst
         copyFlag.src = reinterpret_cast<void *>(src[i]);
         copyFlag.engine = engine[i];
         copyFlag.count = count[i];
-        // TODO: support waitNum > 1
         if (wait_flag.size() > 0) {
             copyFlag.waitNum = 1;
             waitFlag.flag = reinterpret_cast<uint64_t *>(wait_flag[i]);
@@ -65,7 +64,6 @@ std::tuple<mcError_t> mcExtBatchCopyFlagAndWaitWrapper(std::vector<int64_t> &dst
         } else {
             copyFlag.waitNum = 0;
         }
-        // TODO: support writeNum > 1
         copyFlag.writeNum = 1;
         writeFlag.flag = reinterpret_cast<uint64_t *>(write_flag[i]);
         writeFlag.value = write_value[i];

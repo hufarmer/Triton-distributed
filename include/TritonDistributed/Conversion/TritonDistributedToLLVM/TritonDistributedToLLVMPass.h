@@ -96,7 +96,7 @@ void populateDistributedOpToLLVMPatterns(LLVMTypeConverter &typeConverter,
 
 std::unique_ptr<OperationPass<ModuleOp>>
 createConvertMETAXDistributedToLLVMPass(int32_t computeCapability);
-#endif
+#endif // USE_MACA
 
 } // namespace triton
 } // namespace mlir

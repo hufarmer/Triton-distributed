@@ -79,7 +79,6 @@ def ConvertAMDDistributedToLLVM : Pass<"convert-amd-distributed-to-llvm", "mlir:
     ];
 }
 
-// METAX Backend
 #ifdef USE_MACA
 def ConvertMETAXDistributedToLLVM : Pass<"convert-metax-distributed-to-llvm", "mlir::ModuleOp"> {
     let summary = "Convert TritonDistributed to LLVM";
@@ -104,6 +103,5 @@ def ConvertMETAXDistributedToLLVM : Pass<"convert-metax-distributed-to-llvm", "m
                "device compute capability">
     ];
 }
-#endif
-
+#endif // USE_MACA
 #endif // TRITONDISTRIBUTED_LLVM_CONVERSION_PASSES

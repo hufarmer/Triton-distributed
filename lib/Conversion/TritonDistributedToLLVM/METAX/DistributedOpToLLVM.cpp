@@ -1,4 +1,3 @@
-#ifdef USE_MACA
 #include "TritonDistributed/Conversion/TritonDistributedToLLVM/TritonDistributedToLLVMPass.h"
 #include "mlir/Conversion/LLVMCommon/Pattern.h"
 #include "mlir/Conversion/SCFToControlFlow/SCFToControlFlow.h"
@@ -19,11 +18,11 @@ using namespace std::literals;
 
 namespace {
 
-bool useNVSHMEMLibrary(StringRef libname) {
+bool useMXSHMEMLibrary(StringRef libname) {
   return libname == "libmxshmem_device";
 }
 
-Operation *CreateNVSHMEMOp(ConversionPatternRewriter &rewriter, Operation *curOp,
+Operation *CreateMXSHMEMOp(ConversionPatternRewriter &rewriter, Operation *curOp,
                            const StringRef &symbol, StringRef libname,
                            StringRef libpath, ValueRange inputOperands,
                            Type retType) {
@@ -68,11 +67,11 @@ Operation *CreateNVSHMEMOp(ConversionPatternRewriter &rewriter, Operation *curOp
 }
 
 template <typename DistOp>
-class GenericOpToNVSHMEMDevice : public ConvertOpToLLVMPattern<DistOp> {
+class GenericOpToMXSHMEMDevice : public ConvertOpToLLVMPattern<DistOp> {
 public:
   using OpAdaptor = typename DistOp::Adaptor;
 
-  GenericOpToNVSHMEMDevice(const LLVMTypeConverter &converter,
+  GenericOpToMXSHMEMDevice(const LLVMTypeConverter &converter,
                            const PatternBenefit &benefit, StringRef calleeName,
                            StringRef libname = "", StringRef libpath = "")
       : ConvertOpToLLVMPattern<DistOp>(converter, benefit),
@@ -91,9 +90,9 @@ public:
         op->getNumResults() == 0
             ? voidTy
             : this->getTypeConverter()->convertType(op->getResult(0).getType());
-    auto nvshmemOp = CreateNVSHMEMOp(rewriter, op, calleeName, libname, libpath,
+    auto mxshmemOp = CreateMXSHMEMOp(rewriter, op, calleeName, libname, libpath,
                                      newOperands, retType);
-    auto newResult = nvshmemOp->getResult(0);
+    auto newResult = mxshmemOp->getResult(0);
     if (op->getNumResults() == 0) {
       rewriter.eraseOp(op);
     } else {
@@ -115,7 +114,7 @@ void registerGenericOpToMXSHMEMDevice(RewritePatternSet &patterns,
                                       PatternBenefit benefit,
                                       StringRef calleeName, StringRef libname,
                                       StringRef libpath) {
-  patterns.add<GenericOpToNVSHMEMDevice<Args>...>(typeConverter, benefit,
+  patterns.add<GenericOpToMXSHMEMDevice<Args>...>(typeConverter, benefit,
                                                   calleeName, libname, libpath);
 }
 
@@ -157,10 +156,7 @@ struct WaitOpConversion
     auto tid = tid_val();
     Value warpSize = i32_val(64);
     Value laneId = urem(tid, warpSize);
-    // TODO(): how about more barriers?
-    // we only consider warp sync now
-    // so numBarriers should be <= WARP_SIZE
-    // otherwise, the behavior is undefined
+    
     auto pred = rewriter.create<arith::CmpIOp>(loc, arith::CmpIPredicate::slt,
                                             laneId, num_barriers);
     // create if
@@ -305,8 +301,8 @@ public:
     StringRef libpath = op.getLibpath();
 
     Operation *externCallOp;
-    if (useNVSHMEMLibrary(op.getLibname())) {
-      externCallOp = CreateNVSHMEMOp(rewriter, op, funcName, libname, libpath,
+    if (useMXSHMEMLibrary(op.getLibname())) {
+      externCallOp = CreateMXSHMEMOp(rewriter, op, funcName, libname, libpath,
                                      newOperands, retType);
     } else {
       Type funcType = mlir::triton::gpu::getFunctionType(retType, newOperands);
@@ -333,9 +329,6 @@ void mlir::triton::METAX::populateDistributedOpToLLVMPatterns(
     std::string MXSHMEMLibname, std::string MXSHMEMLibpath) {
   patterns.add<WaitOpConversion, ConsumeTokenOpConversion>(typeConverter,
                                                            benefit);
-
-  // convert to nvshmem device func call
-  // TODO:check nvshmem name can be mxshmem name
   registerGenericOpToMXSHMEMDevice<triton::distributed::GetRankOp>(
       patterns, typeConverter, benefit, "mxshmem_my_pe", MXSHMEMLibname,
       MXSHMEMLibpath);
@@ -349,4 +342,3 @@ void mlir::triton::METAX::populateDistributedOpToLLVMPatterns(
                                    MXSHMEMLibpath);
   patterns.add<ExternCallConversion>(typeConverter, benefit);
 }
-#endif
