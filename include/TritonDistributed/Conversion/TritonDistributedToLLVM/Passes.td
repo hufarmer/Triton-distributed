@@ -22,9 +22,9 @@ def ConvertTritonDistributedToLLVM : Pass<"convert-triton-distributed-to-llvm", 
                              "mlir::triton::TritonDialect",
                              "mlir::triton::gpu::TritonGPUDialect",
                              "mlir::triton::nvidia_gpu::TritonNvidiaGPUDialect",
-                             //"triton::simt::SIMTDialect",
+                             "triton::simt::SIMTDialect",
                              "triton::distributed::DistributedDialect",
-                             //"mlir::triton::nvgpu::NVGPUDialect",
+                             "mlir::triton::nvgpu::NVGPUDialect",
                              "mlir::NVVM::NVVMDialect"];
 
     let options = [
