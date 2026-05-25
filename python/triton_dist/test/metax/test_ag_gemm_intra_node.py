@@ -101,7 +101,7 @@ def test_ag_gemm_tma_intra_node(args, autotune=False, use_tma=True):
         A,
         group=args.default_group,
     )
-    C_golden = torch.matmul(ag_A, B.T)
+    C_golden = triton_dist.kernels.metax.gemm(ag_A, B)
     for i in range(num_ranks):
         torch.distributed.barrier(args.default_group)
         if rank == i:
@@ -267,6 +267,7 @@ def test_perf_ag_gemm_golden(args, use_triton=False):
         def gemm():
             return torch.matmul(ag_A, B.T)
 
+    func()
     C_golden, perf = perf_func(func, iters=100, warmup_iters=20)
     dist_print(f"rank{RANK}", perf, need_sync=True, allowed_ranks=list(range(WORLD_SIZE)))
 
@@ -295,10 +296,62 @@ def test_perf_ag_gemm_golden(args, use_triton=False):
 
 register_test("perf_nccltriton")(lambda args: test_perf_ag_gemm_golden(args, use_triton=True))
 
+
+@register_test("checkin")
+def test_ag_gemm_intra_node_ci(args):
+    device = "cuda"
+    dtype = torch.float16
+    rank = args.rank
+    num_ranks = args.num_ranks
+    M = 128 * num_ranks
+    N = 512
+    K = 128
+
+    assert M % num_ranks == 0
+    assert N % num_ranks == 0
+    M_per_rank = M // num_ranks
+    N_per_rank = N // num_ranks
+
+    A = torch.empty([M_per_rank, K], dtype=dtype, device=device)
+    A.fill_(rank + 1)
+    B = torch.ones([N_per_rank, K], dtype=dtype, device=device)
+
+    debug = False
+
+    ag_stream = torch.cuda.Stream()
+    gemm_stream = torch.cuda.Stream()
+
+    ctx = create_ag_gemm_intra_node_context(A, B, rank, num_ranks, BLOCK_M=64, BLOCK_N=64, BLOCK_K=64, stages=2,
+                                            for_correctness=debug, ag_stream=ag_stream, gemm_stream=gemm_stream,
+                                            serial=False, autotune=False)
+
+    ctx.workspace_tensors[rank][:M].copy_(torch.randn([M, K], dtype=dtype, device=device))
+    pymxshmem.mxshmem_barrier_all_on_stream(current_stream.cuda_stream)
+    torch.cuda.synchronize()
+    C = ag_gemm_intra_node(A, B, ctx=ctx, use_tma=False)
+    C_golden = torch.empty([M, N_per_rank], dtype=dtype, device=device)
+    for r in range(0, num_ranks):
+        C_golden[r * M_per_rank:(r + 1) * M_per_rank].fill_((r + 1) * K)
+
+    for i in range(num_ranks):
+        torch.distributed.barrier(args.default_group)
+        if rank == i:
+            print(f"Rank {rank}")
+            if not torch.allclose(C_golden, C):
+                print("Golden")
+                print(C_golden)
+                print("Output")
+                print(C)
+                print("Wrong Answer!")
+            else:
+                print("Pass!")
+
+
 if __name__ == "__main__":
     RANK = int(os.environ.get("RANK", 0))
     LOCAL_RANK = int(os.environ.get("LOCAL_RANK", 0))
     WORLD_SIZE = int(os.environ.get("WORLD_SIZE", 1))
+    print("RANK:", RANK, "LOCAL_RANK:", LOCAL_RANK, "WORLD_SIZE:", WORLD_SIZE)
     torch.cuda.set_device(LOCAL_RANK)
     torch.distributed.init_process_group(
         backend="nccl",
@@ -336,6 +389,9 @@ if __name__ == "__main__":
         sys.exit()
     func = ALL_TESTS[args.case]
     func(args)
-
+    print("RANK:", RANK, "finished all tests")
+    torch.cuda.synchronize()
+    pymxshmem.mxshmem_barrier_all()
     pymxshmem.mxshmem_finalize()
     torch.distributed.destroy_process_group()
+    print("RANK:", RANK, "exit")

@@ -841,7 +841,11 @@ def ag_gemm_intra_node_op(a, b, c, rank, num_ranks, fullmesh_world_size, num_chu
     N_per_rank, K = b.shape
     assert M_per_rank % BLOCK_M == 0, "M_per_rank should be divided by BLOCK_M"
 
-    assert fullmesh_world_size > 1, "Cant find fullmesh nodes in topo"
+    # assert fullmesh_world_size > 1, "Cant find fullmesh nodes in topo"
+    if fullmesh_world_size == 1:
+        print(
+            f"Warning: fullmesh_world_size is 1, Cant find metalink connection in {num_ranks}. This may cause bad performance."
+        )
     fullmesh_nodes_num = max(num_ranks // fullmesh_world_size, 1)
 
     ag_stream = torch.cuda.Stream() if ag_stream is None else ag_stream
@@ -854,7 +858,7 @@ def ag_gemm_intra_node_op(a, b, c, rank, num_ranks, fullmesh_world_size, num_chu
     grid = lambda META: (triton.cdiv(M, META["BLOCK_SIZE_M"]) * triton.cdiv(N_per_rank, META["BLOCK_SIZE_N"]), )
 
     def call_ag(use_pull):
-        if fullmesh_nodes_num == 1:
+        if fullmesh_world_size == 1 or fullmesh_nodes_num == 1:
             cp_engine_producer_all_gather_full_mesh_push(
                 rank,
                 num_ranks,
@@ -1007,13 +1011,18 @@ def get_intranode_fullmesh_world_size(num_ranks):
     # get numa_world_size and fullmesh_world_size
     try:
         numa_world_size = get_numa_world_size()  # expensive so only do once
+        # debug
+        # print("numa_world_size:", numa_world_size)
     except AssertionError:
         numa_world_size = num_ranks
 
     fullmesh_world_size = numa_world_size
+
     while (fullmesh_world_size > 1 and not has_fullmesh_mxlink_ngpus(fullmesh_world_size)):
         fullmesh_world_size //= 2
 
+    # debug
+    # print("fullmesh_world_size:", fullmesh_world_size)
     return fullmesh_world_size
 
 

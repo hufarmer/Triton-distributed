@@ -32,7 +32,7 @@ export PATH=${CUDA_PATH}/bin:${CUCC_PATH}/tools:${PATH}
 
 # fetch metax triton to submodule 3rdparty/triton
 METAX_TRITON_BRANCH=3.6
-METAX_TRITON_COMMIT=70eb31eb1899ec64f1a301b3b065e7cf2c9f5802
+METAX_TRITON_COMMIT=eb5e9b9a7c1f3ef644dca91aafadc961a46f3615
 if [ ! -d "${cur_dir}/../3rdparty/triton" ] || [ ! -d "${cur_dir}/../3rdparty/triton/third_party/metax" ]; then
     bash "${cur_dir}/pull_metax_triton.sh" "${METAX_TRITON_BRANCH}" "${METAX_TRITON_COMMIT}"
 fi

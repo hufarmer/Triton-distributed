@@ -10,37 +10,59 @@ on:
 jobs:
   metax-smoke-test:
     name: Build and Test on Metax GPUs
-    runs-on: "metax-runner"
+    runs-on: "tritondist-metax-runner-set"
     timeout-minutes: 60
     env:
       PYTHON: "python3"
       MAX_JOBS: "32"
-      LLVM_SYSPATH: ${{ vars.METAX_LLVM_SYSPATH || '/opt/maca/llvm' }}
+      LLVM_SYSPATH: ${{ vars.METAX_LLVM_SYSPATH || '/home/runner/metax_llvm' }}
 
     steps:
+      - name: Install dependencies
+        shell: bash
+        run: |
+          echo "CONDA_ENV_PATH=${RUNNER_TEMP:-/tmp}/triton-dist-ci" >> "${GITHUB_ENV}"
+          sudo apt-get update
+          sudo apt install -y zlib1g-dev git
+          mx-smi topo -m
+          mx-smi --list
+          mx-smi topo -t
+
       - name: Checkout v3.6
         uses: actions/checkout@v4
         with:
           ref: v3.6
-          submodules: 'true'
 
-      - name: Install dependencies
-        shell: bash
-        run: |
-          apt-get update
-          apt install -y zlib1g-dev git
-
-      - name: Activate conda and remove preinstalled Triton
+      - name: Check environment and GPU status
         shell: bash
         run: |
           if [ -f "${CONDA_PREFIX}/etc/profile.d/conda.sh" ]; then
             source "${CONDA_PREFIX}/etc/profile.d/conda.sh"
           elif [ -f "/opt/conda/etc/profile.d/conda.sh" ]; then
             source "/opt/conda/etc/profile.d/conda.sh"
-          elif [ -f "${HOME}/miniconda3/etc/profile.d/conda.sh" ]; then
-            source "${HOME}/miniconda3/etc/profile.d/conda.sh"
           fi
-          conda activate
+          conda activate base
+          mx-smi
+          mx-smi topo -m
+          mx-smi --list
+          pushd /opt/maca/samples/mccl_tests/benchmark
+          bash p2p.sh
+          popd
+          pushd /opt/maca/samples/mccl_tests/perf
+          bash mccl.sh 2
+          popd
+          python ./python/triton_dist/test/metax/check_metax_env.py
+
+      - name: Create temporary conda env
+        shell: bash
+        run: |
+          if [ -f "${CONDA_PREFIX}/etc/profile.d/conda.sh" ]; then
+            source "${CONDA_PREFIX}/etc/profile.d/conda.sh"
+          elif [ -f "/opt/conda/etc/profile.d/conda.sh" ]; then
+            source "/opt/conda/etc/profile.d/conda.sh"
+          fi
+          conda create -y -p "${CONDA_ENV_PATH}" --clone base
+          conda activate "${CONDA_ENV_PATH}"
           pip uninstall -y triton || true
 
       - name: Build triton-distributed for Metax
@@ -50,16 +72,14 @@ jobs:
             source "${CONDA_PREFIX}/etc/profile.d/conda.sh"
           elif [ -f "/opt/conda/etc/profile.d/conda.sh" ]; then
             source "/opt/conda/etc/profile.d/conda.sh"
-          elif [ -f "${HOME}/miniconda3/etc/profile.d/conda.sh" ]; then
-            source "${HOME}/miniconda3/etc/profile.d/conda.sh"
           fi
-          conda activate
+          conda activate "${CONDA_ENV_PATH}"
           if [ ! -x "${LLVM_SYSPATH}/bin/mlir-opt" ]; then
             echo "LLVM_SYSPATH does not contain bin/mlir-opt: ${LLVM_SYSPATH}"
             echo "Set repository variable METAX_LLVM_SYSPATH to the LLVM install path configured in the runner pod."
             exit 1
           fi
-          export MAX_JOBS=32
+          export MAX_JOBS=16
           bash ./scripts/build_metax.sh "${LLVM_SYSPATH}"
 
       - name: Metax backend smoke test
@@ -69,8 +89,9 @@ jobs:
             source "${CONDA_PREFIX}/etc/profile.d/conda.sh"
           elif [ -f "/opt/conda/etc/profile.d/conda.sh" ]; then
             source "/opt/conda/etc/profile.d/conda.sh"
-          elif [ -f "${HOME}/miniconda3/etc/profile.d/conda.sh" ]; then
-            source "${HOME}/miniconda3/etc/profile.d/conda.sh"
           fi
-          conda activate
-          python ./python/triton_dist/test/metax/test_common_ops.py
+          conda activate "${CONDA_ENV_PATH}"
+          echo "Test Distributed Op lower:"
+          python ./python/triton_dist/test/metax/test_distributed_wait.py --case correctness
+          echo "Test Allgather Gemm:"
+          bash ./scripts/launch_metax.sh ./python/triton_dist/test/metax/test_ag_gemm_intra_node.py --case checkin

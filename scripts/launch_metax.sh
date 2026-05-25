@@ -1,11 +1,21 @@
 #!/bin/bash
 export MXSHMEM_BOOTSTRAP=UID
-export MXSHMEM_IB_ENABLE_IBGDA=1
-export MXSHMEM_IB_ENABLE_IBRC=0
+#export MXSHMEM_BOOTSTRAP_UID_SOCK_IFNAME=en,eth0,em,bond
+#export MACA_LAUNCH_BLOCKING=0
+#export MCCL_DEBUG=INFO
+#export MXSHMEM_SYMMETRIC_SIZE=${MXSHMEM_SYMMETRIC_SIZE:-1000000000}
 
-nproc_per_node=${ARNOLD_WORKER_GPU:=$(mx-smi --list | grep "GPU" | wc -l)}
+export TRITON_CACHE_DIR=${TRITON_CACHE_DIR:-~/.triton}
+rm -rf ${TRITON_CACHE_DIR}
+
+nproc_per_node=${ARNOLD_WORKER_GPU:=$(mx-smi --list | grep "GPU.*UUID" | wc -l)}
 nnodes=${ARNOLD_WORKER_NUM:=1}
 node_rank=${ARNOLD_ID:=0}
+
+if [ ${nnodes} >= 1 ]; then
+  export MXSHMEM_IB_ENABLE_IBGDA=1
+  export MXSHMEM_IB_ENABLE_IBRC=0
+fi
 
 master_addr=${ARNOLD_WORKER_0_HOST:="127.0.0.1"}
 if [ -z ${ARNOLD_WORKER_0_PORT} ]; then
@@ -21,7 +31,6 @@ CMD="torchrun \
   --nproc_per_node=${nproc_per_node} \
   --nnodes=${nnodes} \
   ${additional_args} \
-  ${DIST_TRITON_EXTRA_TORCHRUN_ARGS} \
   $@"
 
 echo ${CMD}
